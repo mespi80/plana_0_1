@@ -4,6 +4,7 @@ import { useState } from "react";
 import { CheckCircle, Calendar, Clock, MapPin, Users, Download, Share2, Phone } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { QRCodeDisplay } from "@/components/qr-code/qr-code-display";
 
 interface BookingConfirmationProps {
   bookingId: string;
@@ -128,25 +129,24 @@ export function BookingConfirmation({
       </Card>
 
       {/* QR Code */}
-      {qrCodeUrl && (
-        <Card className="mb-6">
-          <CardHeader>
-            <CardTitle>Entry QR Code</CardTitle>
-          </CardHeader>
-          <CardContent className="text-center">
-            <div className="bg-white p-4 rounded-lg border inline-block">
-              <img 
-                src={qrCodeUrl} 
-                alt="Entry QR Code" 
-                className="w-48 h-48 mx-auto"
-              />
-            </div>
-            <p className="text-sm text-gray-600 mt-3">
-              Show this QR code at the venue for entry
-            </p>
-          </CardContent>
-        </Card>
-      )}
+      <Card className="mb-6">
+        <CardHeader>
+          <CardTitle>Entry QR Code</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <QRCodeDisplay
+            bookingId={bookingId}
+            userId="user_demo_123"
+            eventId="event_demo_456"
+            eventTitle={eventTitle}
+            ticketQuantity={ticketQuantity}
+            onDownload={onDownloadTicket}
+            onShare={onShare}
+            showExpiryInfo={true}
+            size="medium"
+          />
+        </CardContent>
+      </Card>
 
       {/* Action Buttons */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-6">

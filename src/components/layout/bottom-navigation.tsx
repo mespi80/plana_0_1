@@ -21,10 +21,10 @@ export function BottomNavigation() {
       active: pathname === "/discover"
     },
     {
-      href: "/favorites",
-      label: "Favorites",
-      icon: Heart,
-      active: pathname === "/favorites"
+      href: "/qr-code",
+      label: "QR Code",
+      icon: QrCode,
+      active: pathname === "/qr-code"
     },
     {
       href: "/bookings",
