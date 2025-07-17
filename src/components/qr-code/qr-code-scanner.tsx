@@ -1,9 +1,12 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
-import { Camera, CheckCircle, XCircle, AlertCircle, RefreshCw, Settings } from "lucide-react";
+import { useState, useRef, useEffect, useCallback } from "react";
+import { Camera, CheckCircle, XCircle, AlertCircle, RefreshCw, Settings, Wifi, WifiOff, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { QRCodeService, QRCodeData, CheckInData } from "@/lib/qr-code";
 
 interface QRCodeScannerProps {
@@ -13,7 +16,7 @@ interface QRCodeScannerProps {
   onError?: (error: string) => void;
 }
 
-type ScanStatus = "idle" | "scanning" | "success" | "error" | "processing";
+type ScanStatus = "idle" | "scanning" | "processing" | "success" | "error" | "offline";
 
 export function QRCodeScanner({
   businessId,
@@ -26,19 +29,45 @@ export function QRCodeScanner({
   const [error, setError] = useState<string | null>(null);
   const [isCameraActive, setIsCameraActive] = useState(false);
   const [checkInHistory, setCheckInHistory] = useState<CheckInData[]>([]);
+  const [isOnline, setIsOnline] = useState(true);
+  const [showManualEntry, setShowManualEntry] = useState(false);
+  const [manualQRData, setManualQRData] = useState("");
+  const [scanningInterval, setScanningInterval] = useState<NodeJS.Timeout | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  // Check online status
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    setIsOnline(navigator.onLine);
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
 
   const startCamera = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: "environment" }
+        video: { 
+          facingMode: "environment",
+          width: { ideal: 1280 },
+          height: { ideal: 720 }
+        }
       });
 
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
         setIsCameraActive(true);
         setStatus("scanning");
+        
+        // Start continuous scanning
+        startContinuousScanning();
       }
     } catch (err) {
       console.error("Camera access error:", err);
@@ -54,6 +83,23 @@ export function QRCodeScanner({
       videoRef.current.srcObject = null;
       setIsCameraActive(false);
     }
+    
+    if (scanningInterval) {
+      clearInterval(scanningInterval);
+      setScanningInterval(null);
+    }
+  };
+
+  const startContinuousScanning = () => {
+    // In a real implementation, this would use a QR code scanning library
+    // For demo purposes, we'll simulate scanning every 2 seconds
+    const interval = setInterval(() => {
+      if (status === "scanning" && Math.random() < 0.1) { // 10% chance to "find" a QR code
+        handleScan();
+      }
+    }, 2000);
+    
+    setScanningInterval(interval);
   };
 
   const captureFrame = (): string | null => {
@@ -72,7 +118,7 @@ export function QRCodeScanner({
     return canvas.toDataURL('image/png');
   };
 
-  const processQRCode = async (qrData: string) => {
+  const processQRCode = useCallback(async (qrData: string) => {
     setStatus("processing");
 
     try {
@@ -125,17 +171,17 @@ export function QRCodeScanner({
         setError(null);
       }, 3000);
     }
-  };
+  }, [eventId, checkInHistory, onCheckIn, onError]);
 
   const handleScan = () => {
     // In a real implementation, this would use a QR code scanning library
     // For demo purposes, we'll simulate scanning
     const mockQRData = JSON.stringify({
-      bookingId: "booking_demo_123",
-      userId: "user_demo_456",
+      bookingId: `booking_${Date.now()}`,
+      userId: `user_${Math.floor(Math.random() * 1000)}`,
       eventId: eventId,
       eventTitle: "Demo Event",
-      ticketQuantity: 2,
+      ticketQuantity: Math.floor(Math.random() * 4) + 1,
       timestamp: new Date().toISOString(),
       signature: "demo_signature"
     });
@@ -144,14 +190,38 @@ export function QRCodeScanner({
   };
 
   const handleManualEntry = () => {
-    // In a real app, this would open a manual entry modal
-    console.log("Manual entry not implemented");
+    setShowManualEntry(true);
+  };
+
+  const handleManualSubmit = () => {
+    if (manualQRData.trim()) {
+      processQRCode(manualQRData.trim());
+      setShowManualEntry(false);
+      setManualQRData("");
+    }
   };
 
   const resetScanner = () => {
     setStatus("scanning");
     setScannedData(null);
     setError(null);
+  };
+
+  const exportCheckInHistory = () => {
+    const csvContent = [
+      "Booking ID,User ID,Event ID,Check-in Time,Location",
+      ...checkInHistory.map(checkIn => 
+        `${checkIn.bookingId},${checkIn.userId},${checkIn.eventId},${checkIn.checkInTime},${checkIn.location ? `${checkIn.location.latitude},${checkIn.location.longitude}` : 'N/A'}`
+      )
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `check-in-history-${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+    window.URL.revokeObjectURL(url);
   };
 
   useEffect(() => {
@@ -174,6 +244,8 @@ export function QRCodeScanner({
         return <XCircle className="w-8 h-8 text-red-500" />;
       case "processing":
         return <RefreshCw className="w-8 h-8 text-purple-500 animate-spin" />;
+      case "offline":
+        return <WifiOff className="w-8 h-8 text-orange-500" />;
       default:
         return <Camera className="w-8 h-8 text-gray-400" />;
     }
@@ -184,114 +256,141 @@ export function QRCodeScanner({
       case "idle":
         return "Ready to scan tickets";
       case "scanning":
-        return "Point camera at QR code";
+        return isOnline ? "Point camera at QR code" : "Offline mode - scanning available";
       case "success":
         return "Check-in successful!";
       case "error":
         return error || "Scan failed";
       case "processing":
         return "Processing ticket...";
+      case "offline":
+        return "Working offline - some features limited";
       default:
         return "";
     }
   };
 
   return (
-    <div className="space-y-6">
-      {/* Scanner Status */}
+    <div className="space-y-4">
+      {/* Status Display */}
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center justify-between">
-            <span>QR Code Scanner</span>
-            <div className="flex space-x-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleManualEntry}
-              >
-                <Settings className="w-4 h-4 mr-2" />
-                Manual Entry
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={resetScanner}
-              >
-                <RefreshCw className="w-4 h-4 mr-2" />
-                Reset
-              </Button>
+        <CardContent className="p-4">
+          <div className="flex items-center space-x-3">
+            {getStatusIcon()}
+            <div className="flex-1">
+              <p className="font-medium">{getStatusMessage()}</p>
+              <div className="flex items-center space-x-2 text-sm text-gray-600">
+                {isOnline ? (
+                  <Wifi className="w-4 h-4 text-green-500" />
+                ) : (
+                  <WifiOff className="w-4 h-4 text-orange-500" />
+                )}
+                <span>{isOnline ? "Online" : "Offline"}</span>
+                <span>•</span>
+                <span>{checkInHistory.length} check-ins today</span>
+              </div>
             </div>
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="text-center space-y-4">
-            <div className="flex justify-center">
-              {getStatusIcon()}
-            </div>
-            <h3 className={`text-lg font-medium ${
-              status === "success" ? "text-green-600" :
-              status === "error" ? "text-red-600" :
-              status === "processing" ? "text-purple-600" :
-              "text-gray-900"
-            }`}>
-              {getStatusMessage()}
-            </h3>
           </div>
         </CardContent>
       </Card>
 
       {/* Camera View */}
-      <Card>
-        <CardContent className="p-4">
-          <div className="relative aspect-video bg-gray-100 rounded-lg overflow-hidden">
-            {isCameraActive ? (
-              <>
-                <video
-                  ref={videoRef}
-                  autoPlay
-                  playsInline
-                  muted
-                  className="w-full h-full object-cover"
-                />
-                <canvas
-                  ref={canvasRef}
-                  className="hidden"
-                />
-                {/* Scanning overlay */}
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="w-64 h-64 border-2 border-purple-500 rounded-lg relative">
-                    <div className="absolute -top-1 -left-1 w-4 h-4 border-l-2 border-t-2 border-purple-500"></div>
-                    <div className="absolute -top-1 -right-1 w-4 h-4 border-r-2 border-t-2 border-purple-500"></div>
-                    <div className="absolute -bottom-1 -left-1 w-4 h-4 border-l-2 border-b-2 border-purple-500"></div>
-                    <div className="absolute -bottom-1 -right-1 w-4 h-4 border-r-2 border-b-2 border-purple-500"></div>
-                  </div>
-                </div>
-              </>
-            ) : (
-              <div className="flex items-center justify-center h-full">
-                <div className="text-center">
-                  <Camera className="w-12 h-12 text-gray-400 mx-auto mb-2" />
-                  <p className="text-gray-600">Camera not active</p>
+      {isCameraActive && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Camera View</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="relative">
+              <video
+                ref={videoRef}
+                autoPlay
+                playsInline
+                muted
+                className="w-full h-64 object-cover rounded-lg border"
+              />
+              <canvas
+                ref={canvasRef}
+                className="hidden"
+              />
+              {/* Scanning overlay */}
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div className="w-48 h-48 border-2 border-blue-500 rounded-lg relative">
+                  <div className="absolute inset-0 border-2 border-blue-500 rounded-lg animate-pulse"></div>
                 </div>
               </div>
-            )}
-          </div>
-        </CardContent>
-      </Card>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
-      {/* Demo Button for Testing */}
-      <Card>
-        <CardContent className="p-4">
-          <Button
-            onClick={handleScan}
-            className="w-full"
-            disabled={status === "processing"}
-          >
-            <Camera className="w-4 h-4 mr-2" />
-            Demo: Scan Test QR Code
-          </Button>
-        </CardContent>
-      </Card>
+      {/* Action Buttons */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <Button
+          onClick={handleScan}
+          className="w-full"
+          disabled={status === "processing"}
+        >
+          <Camera className="w-4 h-4 mr-2" />
+          Demo: Scan Test QR Code
+        </Button>
+
+        <Dialog open={showManualEntry} onOpenChange={setShowManualEntry}>
+          <DialogTrigger asChild>
+            <Button variant="outline" className="w-full">
+              <Upload className="w-4 h-4 mr-2" />
+              Manual Entry
+            </Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Manual QR Code Entry</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="qr-data">QR Code Data</Label>
+                <Input
+                  id="qr-data"
+                  value={manualQRData}
+                  onChange={(e) => setManualQRData(e.target.value)}
+                  placeholder="Paste QR code data here..."
+                  className="font-mono text-sm"
+                />
+              </div>
+              <div className="flex space-x-2">
+                <Button onClick={handleManualSubmit} className="flex-1">
+                  Process
+                </Button>
+                <Button variant="outline" onClick={() => setShowManualEntry(false)}>
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        <Button
+          onClick={exportCheckInHistory}
+          variant="outline"
+          className="w-full"
+          disabled={checkInHistory.length === 0}
+        >
+          <Upload className="w-4 h-4 mr-2" />
+          Export History
+        </Button>
+      </div>
+
+      {/* Error Display */}
+      {error && (
+        <Card className="border-red-200 bg-red-50">
+          <CardContent className="p-4">
+            <div className="flex items-center space-x-2">
+              <AlertCircle className="w-5 h-5 text-red-500" />
+              <p className="text-red-800">{error}</p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Scanned Data Display */}
       {scannedData && (
@@ -332,8 +431,8 @@ export function QRCodeScanner({
             <CardTitle>Recent Check-ins</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-2">
-              {checkInHistory.slice(-5).map((checkIn, index) => (
+            <div className="space-y-2 max-h-48 overflow-y-auto">
+              {checkInHistory.slice(-5).reverse().map((checkIn, index) => (
                 <div key={index} className="flex items-center justify-between p-2 bg-gray-50 rounded">
                   <div>
                     <p className="text-sm font-medium">{checkIn.bookingId.slice(-8)}</p>

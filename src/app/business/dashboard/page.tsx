@@ -6,6 +6,7 @@ import { EventCreationForm } from "@/components/business/event-creation-form";
 import { EventManagement } from "@/components/business/event-management";
 import { EventPreview } from "@/components/business/event-preview";
 import { QRCodeScanner } from "@/components/qr-code/qr-code-scanner";
+import { CheckInHistory } from "@/components/business/check-in-history";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { 
@@ -229,12 +230,23 @@ export default function BusinessDashboardPage() {
         <p className="text-gray-600">Scan customer QR codes to validate tickets and check them in</p>
       </div>
       
-      <QRCodeScanner
-        businessId="business_demo_123"
-        eventId="event_demo_456"
-        onCheckIn={(checkInData) => console.log("Check-in:", checkInData)}
-        onError={(error) => console.error("Scanner error:", error)}
-      />
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div>
+          <QRCodeScanner
+            businessId="business_demo_123"
+            eventId="event_demo_456"
+            onCheckIn={(checkInData) => console.log("Check-in:", checkInData)}
+            onError={(error) => console.error("Scanner error:", error)}
+          />
+        </div>
+        
+        <div>
+          <CheckInHistory
+            eventId="event_demo_456"
+            businessId="business_demo_123"
+          />
+        </div>
+      </div>
     </div>
   );
 
