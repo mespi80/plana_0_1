@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, Heart, QrCode, User } from "lucide-react";
+import { Home, Heart, QrCode, User, Sparkles, Calendar } from "lucide-react";
 
 export function BottomNavigation() {
   const pathname = usePathname();
@@ -15,16 +15,22 @@ export function BottomNavigation() {
       active: pathname === "/"
     },
     {
+      href: "/discover",
+      label: "Discover",
+      icon: Sparkles,
+      active: pathname === "/discover"
+    },
+    {
       href: "/favorites",
       label: "Favorites",
       icon: Heart,
       active: pathname === "/favorites"
     },
     {
-      href: "/qr-code",
-      label: "QR Code",
-      icon: QrCode,
-      active: pathname === "/qr-code"
+      href: "/bookings",
+      label: "Bookings",
+      icon: Calendar,
+      active: pathname === "/bookings"
     },
     {
       href: "/profile",

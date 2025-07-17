@@ -1,86 +1,167 @@
 "use client";
 
-import { Heart, MapPin, Calendar, DollarSign } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Heart, MapPin, Calendar, Clock, DollarSign, Trash2 } from "lucide-react";
 import { AppLayout } from "@/components/layout/app-layout";
+import { EventDetailModal } from "@/components/events/event-detail-modal";
+import { Event } from "@/types/event";
+import Link from "next/link";
 
 export default function FavoritesPage() {
-  // Mock favorites data
-  const favorites = [
-    {
-      id: 1,
-      title: "Jazz Night at Blue Note",
-      location: "Blue Note Jazz Club",
-      date: "Tonight, 8:00 PM",
-      price: 25,
-      image: "https://via.placeholder.com/80x80/6366f1/ffffff?text=Jazz"
-    },
-    {
-      id: 2,
-      title: "Comedy Show",
-      location: "Laugh Factory",
-      date: "Tomorrow, 7:30 PM",
-      price: 18,
-      image: "https://via.placeholder.com/80x80/ec4899/ffffff?text=Comedy"
-    },
-    {
-      id: 3,
-      title: "Art Gallery Opening",
-      location: "Modern Art Museum",
-      date: "Friday, 6:00 PM",
-      price: 12,
-      image: "https://via.placeholder.com/80x80/10b981/ffffff?text=Art"
+  const [favorites, setFavorites] = useState<Event[]>([]);
+  const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  // Load favorites from localStorage (in a real app, this would come from the database)
+  useEffect(() => {
+    const savedFavorites = localStorage.getItem('plana-favorites');
+    if (savedFavorites) {
+      try {
+        setFavorites(JSON.parse(savedFavorites));
+      } catch (error) {
+        console.error('Error loading favorites:', error);
+      }
     }
-  ];
+  }, []);
+
+  const handleRemoveFavorite = (eventId: string) => {
+    const updatedFavorites = favorites.filter(event => event.id !== eventId);
+    setFavorites(updatedFavorites);
+    localStorage.setItem('plana-favorites', JSON.stringify(updatedFavorites));
+  };
+
+  const handleBook = (event: Event) => {
+    setSelectedEvent(event);
+    setIsModalOpen(true);
+  };
+
+  const handleFavorite = (event: Event) => {
+    // This would toggle the favorite status in a real app
+    console.log('Toggle favorite:', event);
+  };
+
+  if (favorites.length === 0) {
+    return (
+      <AppLayout>
+        <div className="flex-1 flex items-center justify-center p-4">
+          <div className="text-center">
+            <Heart className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+            <h2 className="text-xl font-semibold text-gray-900 mb-2">No favorites yet</h2>
+            <p className="text-gray-500 mb-6">
+              Start discovering events and swipe right to add them to your favorites!
+            </p>
+            <a
+              href="/discover"
+              className="inline-flex items-center px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+            >
+              Start Discovering
+            </a>
+          </div>
+        </div>
+      </AppLayout>
+    );
+  }
 
   return (
     <AppLayout>
       {/* Header */}
       <header className="bg-white border-b border-gray-200 px-4 py-3">
-        <h1 className="text-xl font-bold text-gray-900">Favorites</h1>
+        <div className="flex items-center justify-between">
+          <h1 className="text-xl font-bold text-gray-900">My Favorites</h1>
+          <div className="flex items-center space-x-2">
+            <Heart className="w-5 h-5 text-red-500" />
+            <span className="text-sm text-gray-500">{favorites.length} events</span>
+          </div>
+        </div>
       </header>
 
       {/* Content */}
-      <div className="flex-1 p-4">
-        {favorites.length === 0 ? (
-          <div className="text-center py-12">
-            <Heart className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">No favorites yet</h3>
-            <p className="text-gray-500">Start exploring events and save your favorites here</p>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            {favorites.map((favorite) => (
-              <div
-                key={favorite.id}
-                className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 flex items-center space-x-4"
-              >
-                <div className="w-20 h-20 bg-gray-200 rounded-lg flex-shrink-0">
-                  <img
-                    src={favorite.image}
-                    alt={favorite.title}
-                    className="w-full h-full object-cover rounded-lg"
-                  />
+      <div className="flex-1 p-4 bg-gray-50">
+        <div className="max-w-2xl mx-auto space-y-4">
+          {favorites.map((event) => (
+            <div
+              key={event.id}
+              className="bg-white rounded-xl shadow-sm overflow-hidden hover:shadow-md transition-shadow"
+            >
+              <div className="flex">
+                {/* Event Image */}
+                <div className="w-24 h-24 bg-gradient-to-br from-purple-500 to-blue-600 flex-shrink-0">
+                  {event.image ? (
+                    <img
+                      src={event.image}
+                      alt={event.title}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center">
+                      <span className="text-white text-xs font-bold text-center px-2">
+                        {event.category}
+                      </span>
+                    </div>
+                  )}
                 </div>
-                <div className="flex-1 min-w-0">
-                  <h3 className="font-medium text-gray-900 truncate">{favorite.title}</h3>
-                  <div className="flex items-center text-sm text-gray-500 mt-1">
-                    <MapPin className="w-4 h-4 mr-1" />
-                    <span className="truncate">{favorite.location}</span>
+
+                {/* Event Details */}
+                <div className="flex-1 p-4">
+                  <div className="flex items-start justify-between mb-2">
+                    <Link href={`/events/${event.id}`}>
+                      <h3 className="font-semibold text-gray-900 line-clamp-1 hover:text-purple-600 transition-colors cursor-pointer">
+                        {event.title}
+                      </h3>
+                    </Link>
+                    <div className="flex items-center space-x-2">
+                      <span className="text-lg font-bold text-purple-600">
+                        ${event.price}
+                      </span>
+                      <button
+                        onClick={() => handleRemoveFavorite(event.id)}
+                        className="p-1 text-gray-400 hover:text-red-500 transition-colors"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
                   </div>
-                  <div className="flex items-center text-sm text-gray-500 mt-1">
-                    <Calendar className="w-4 h-4 mr-1" />
-                    <span>{favorite.date}</span>
+
+                  <div className="space-y-1 mb-3">
+                    <div className="flex items-center text-sm text-gray-600">
+                      <MapPin className="w-3 h-3 mr-2 flex-shrink-0" />
+                      <span className="truncate">{event.venue}</span>
+                    </div>
+                    <div className="flex items-center text-sm text-gray-600">
+                      <Calendar className="w-3 h-3 mr-2 flex-shrink-0" />
+                      <span>{event.startTime}</span>
+                    </div>
+                    <div className="flex items-center text-sm text-gray-600">
+                      <Clock className="w-3 h-3 mr-2 flex-shrink-0" />
+                      <span>{event.endTime}</span>
+                    </div>
                   </div>
-                </div>
-                <div className="flex items-center text-lg font-semibold text-purple-600">
-                  <DollarSign className="w-4 h-4 mr-1" />
-                  {favorite.price}
+
+                  {/* Action Buttons */}
+                  <div className="flex space-x-2">
+                    <button
+                      onClick={() => handleBook(event)}
+                      className="flex-1 bg-purple-600 text-white py-2 px-3 rounded-lg text-sm font-medium hover:bg-purple-700 transition-colors flex items-center justify-center"
+                    >
+                      <DollarSign className="w-3 h-3 mr-1" />
+                      Book Now
+                    </button>
+                  </div>
                 </div>
               </div>
-            ))}
-          </div>
-        )}
+            </div>
+          ))}
+        </div>
       </div>
+
+      {/* Event Detail Modal */}
+      <EventDetailModal
+        event={selectedEvent}
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onBook={handleBook}
+        onFavorite={handleFavorite}
+      />
     </AppLayout>
   );
 } 

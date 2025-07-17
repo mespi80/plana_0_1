@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 import { useRouter } from "next/navigation";
-import { User, Settings, LogOut, MapPin, Bell, Shield, HelpCircle } from "lucide-react";
+import { User, Settings, LogOut, MapPin, Bell, Shield, HelpCircle, CreditCard } from "lucide-react";
 import { AppLayout } from "@/components/layout/app-layout";
 
 export default function ProfilePage() {
@@ -47,6 +47,11 @@ export default function ProfilePage() {
   }
 
   const menuItems = [
+    {
+      icon: CreditCard,
+      label: "Payment Settings",
+      href: "/settings/payment"
+    },
     {
       icon: MapPin,
       label: "Location Settings",
@@ -102,7 +107,10 @@ export default function ProfilePage() {
             const Icon = item.icon;
             return (
               <div key={item.label}>
-                <button className="w-full flex items-center space-x-3 p-4 hover:bg-gray-50 transition-colors">
+                <button 
+                  className="w-full flex items-center space-x-3 p-4 hover:bg-gray-50 transition-colors"
+                  onClick={() => router.push(item.href)}
+                >
                   <Icon className="w-5 h-5 text-gray-500" />
                   <span className="flex-1 text-left text-gray-900">{item.label}</span>
                   <div className="w-2 h-2 bg-gray-300 rounded-full"></div>
