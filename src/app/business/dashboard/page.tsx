@@ -1,12 +1,14 @@
 "use client";
 
 import { useState } from "react";
+import { BusinessGuard } from "@/components/auth/role-guard";
 import { BusinessDashboardLayout } from "@/components/business/business-dashboard-layout";
 import { EventCreationForm } from "@/components/business/event-creation-form";
 import { EventManagement } from "@/components/business/event-management";
 import { EventPreview } from "@/components/business/event-preview";
 import { QRCodeScanner } from "@/components/qr-code/qr-code-scanner";
 import { CheckInHistory } from "@/components/business/check-in-history";
+import { AnalyticsDashboard } from "@/components/business/analytics-dashboard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { 
@@ -252,22 +254,10 @@ export default function BusinessDashboardPage() {
 
   const renderAnalyticsContent = () => (
     <div className="p-6">
-      <div className="mb-6">
-        <h2 className="text-2xl font-bold text-gray-900 mb-2">Analytics Dashboard</h2>
-        <p className="text-gray-600">Track your business performance and insights</p>
-      </div>
-      
-      <Card>
-        <CardContent className="p-6">
-          <div className="text-center">
-            <BarChart3 className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">Analytics Coming Soon</h3>
-            <p className="text-gray-600">
-              Detailed analytics and reporting features will be available in the next update.
-            </p>
-          </div>
-        </CardContent>
-      </Card>
+      <AnalyticsDashboard
+        businessId="business_demo_123"
+        dateRange="30d"
+      />
     </div>
   );
 
@@ -310,22 +300,24 @@ export default function BusinessDashboardPage() {
   };
 
   return (
-    <BusinessDashboardLayout
-      activeTab={activeTab}
-      onTabChange={handleTabChange}
-      businessStats={businessStats}
-    >
-      {renderContent()}
-      
-      {/* Event Preview Modal */}
-      {showEventPreview && previewEventData && (
-        <EventPreview
-          eventData={previewEventData}
-          onClose={handlePreviewClose}
-          onEdit={handlePreviewEdit}
-          onPublish={handlePreviewPublish}
-        />
-      )}
-    </BusinessDashboardLayout>
+    <BusinessGuard>
+      <BusinessDashboardLayout
+        activeTab={activeTab}
+        onTabChange={handleTabChange}
+        businessStats={businessStats}
+      >
+        {renderContent()}
+        
+        {/* Event Preview Modal */}
+        {showEventPreview && previewEventData && (
+          <EventPreview
+            eventData={previewEventData}
+            onClose={handlePreviewClose}
+            onEdit={handlePreviewEdit}
+            onPublish={handlePreviewPublish}
+          />
+        )}
+      </BusinessDashboardLayout>
+    </BusinessGuard>
   );
 } 

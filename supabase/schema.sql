@@ -7,6 +7,7 @@ CREATE TABLE public.profiles (
   email TEXT UNIQUE NOT NULL,
   full_name TEXT,
   avatar_url TEXT,
+  role TEXT DEFAULT 'user' CHECK (role IN ('user', 'business', 'admin')),
   interests TEXT,
   location_lat DECIMAL(10, 8),
   location_lng DECIMAL(11, 8),

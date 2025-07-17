@@ -2,43 +2,73 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, Heart, QrCode, User, Sparkles, Calendar } from "lucide-react";
+import { useAuth } from "@/contexts/auth-context";
+import { Home, Heart, QrCode, User, Sparkles, Calendar, BarChart3, Shield } from "lucide-react";
 
 export function BottomNavigation() {
   const pathname = usePathname();
+  const { user, canAccessBusiness, canAccessAdmin } = useAuth();
 
-  const navItems = [
-    {
-      href: "/",
-      label: "Home",
-      icon: Home,
-      active: pathname === "/"
-    },
-    {
-      href: "/discover",
-      label: "Discover",
-      icon: Sparkles,
-      active: pathname === "/discover"
-    },
-    {
-      href: "/qr-code",
-      label: "QR Code",
-      icon: QrCode,
-      active: pathname === "/qr-code"
-    },
-    {
-      href: "/bookings",
-      label: "Bookings",
-      icon: Calendar,
-      active: pathname === "/bookings"
-    },
-    {
+  const getNavItems = () => {
+    const baseItems = [
+      {
+        href: "/",
+        label: "Home",
+        icon: Home,
+        active: pathname === "/"
+      },
+      {
+        href: "/discover",
+        label: "Discover",
+        icon: Sparkles,
+        active: pathname === "/discover"
+      },
+      {
+        href: "/qr-code",
+        label: "QR Code",
+        icon: QrCode,
+        active: pathname === "/qr-code"
+      },
+      {
+        href: "/bookings",
+        label: "Bookings",
+        icon: Calendar,
+        active: pathname === "/bookings"
+      }
+    ];
+
+    // Add business dashboard for business users
+    if (canAccessBusiness()) {
+      baseItems.push({
+        href: "/business/dashboard",
+        label: "Business",
+        icon: BarChart3,
+        active: pathname.startsWith("/business")
+      });
+    }
+
+    // Add admin dashboard for admin users
+    if (canAccessAdmin()) {
+      baseItems.push({
+        href: "/admin",
+        label: "Admin",
+        icon: Shield,
+        active: pathname.startsWith("/admin")
+      });
+    }
+
+    // Always add profile at the end
+    baseItems.push({
       href: "/profile",
       label: "Profile",
       icon: User,
       active: pathname === "/profile"
-    }
-  ];
+    });
+
+    return baseItems;
+  };
+
+  const navItems = getNavItems();
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-50">
