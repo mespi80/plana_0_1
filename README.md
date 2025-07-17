@@ -1,36 +1,165 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# PLANA - Real-time Local Discovery Platform
 
-## Getting Started
+PLANA is a real-time local discovery platform that helps users find and book same-day events, experiences, and activities happening near them right now.
 
-First, run the development server:
+## 🚀 Features
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+- **Real-time Map Discovery**: Interactive map showing events happening now
+- **Tinder-style Card Interface**: Swipe through events to discover new experiences
+- **Same-day Booking**: Instant booking with seamless payment processing
+- **QR Code System**: Unified QR codes for all experiences
+- **Business Dashboard**: Event management and analytics for venues
+- **Social Features**: Connect with friends and share experiences
+
+## 🛠️ Tech Stack
+
+- **Frontend**: Next.js 14+ with TypeScript and App Router
+- **Styling**: Tailwind CSS + Shadcn UI components
+- **Backend**: Supabase (PostgreSQL, Auth, Real-time)
+- **Payments**: Stripe
+- **Maps**: Google Maps API
+- **State Management**: React Server Components + nuqs
+- **Forms**: React Hook Form + Zod validation
+
+## 📦 Installation
+
+1. **Clone the repository**
+   ```bash
+   git clone <repository-url>
+   cd plana
+   ```
+
+2. **Install dependencies**
+   ```bash
+   npm install
+   ```
+
+3. **Set up environment variables**
+   Create a `.env.local` file in the root directory:
+   ```env
+   # Supabase Configuration
+   NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
+   NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+   SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
+
+   # Stripe Configuration
+   NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=your_stripe_publishable_key
+   STRIPE_SECRET_KEY=your_stripe_secret_key
+   STRIPE_WEBHOOK_SECRET=your_webhook_secret
+
+   # Google Maps API
+   NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=your_google_maps_api_key
+
+   # App Configuration
+   NEXT_PUBLIC_APP_URL=http://localhost:3000
+   ```
+
+4. **Run the development server**
+   ```bash
+   npm run dev
+   ```
+
+5. **Open your browser**
+   Navigate to [http://localhost:3000](http://localhost:3000)
+
+## 🏗️ Project Structure
+
+```
+src/
+├── app/                    # Next.js App Router pages
+│   ├── (auth)/            # Authentication routes
+│   ├── (dashboard)/       # Dashboard routes
+│   ├── api/               # API routes
+│   └── globals.css        # Global styles
+├── components/            # React components
+│   ├── ui/               # Shadcn UI components
+│   ├── auth/             # Authentication components
+│   ├── events/           # Event-related components
+│   ├── map/              # Map components
+│   ├── booking/          # Booking components
+│   └── business/         # Business dashboard components
+├── lib/                  # Utility libraries
+│   ├── supabase.ts       # Supabase client
+│   ├── stripe.ts         # Stripe configuration
+│   ├── maps.ts           # Google Maps configuration
+│   └── utils.ts          # General utilities
+├── types/                # TypeScript type definitions
+│   ├── events.ts         # Event-related types
+│   └── user.ts           # User-related types
+└── hooks/                # Custom React hooks
+    ├── use-auth.ts       # Authentication hook
+    ├── use-events.ts     # Events data hook
+    └── use-location.ts   # Location services hook
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## 🔧 Development
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### Available Scripts
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- `npm run dev` - Start development server
+- `npm run build` - Build for production
+- `npm run start` - Start production server
+- `npm run lint` - Run ESLint
 
-## Learn More
+### Adding Shadcn UI Components
 
-To learn more about Next.js, take a look at the following resources:
+```bash
+npx shadcn@latest add <component-name>
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### Database Schema
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+The project uses Supabase with the following main tables:
+- `profiles` - User profiles and preferences
+- `venues` - Venue information
+- `events` - Event details
+- `bookings` - User bookings
+- `businesses` - Business accounts
+- `check_ins` - QR code check-ins
+- `favorites` - User favorites
 
-## Deploy on Vercel
+## 🚀 Deployment
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+### Vercel (Recommended)
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+1. Push your code to GitHub
+2. Connect your repository to Vercel
+3. Add environment variables in Vercel dashboard
+4. Deploy automatically on push
+
+### Manual Deployment
+
+1. Build the project: `npm run build`
+2. Start the production server: `npm run start`
+
+## 📱 Mobile Support
+
+The application is designed with a mobile-first approach and includes:
+- Responsive design for all screen sizes
+- Touch-friendly interactions
+- PWA capabilities
+- Optimized performance for mobile devices
+
+## 🔒 Security
+
+- Row Level Security (RLS) policies in Supabase
+- Secure authentication with Supabase Auth
+- PCI-compliant payment processing with Stripe
+- Environment variable protection
+- Input validation with Zod
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Add tests if applicable
+5. Submit a pull request
+
+## 📄 License
+
+This project is licensed under the MIT License.
+
+## 🆘 Support
+
+For support, email support@plana.com or create an issue in the repository.
