@@ -83,6 +83,14 @@ export default function ProfilePage() {
     }
   ];
 
+  const legalItems = [
+    {
+      icon: Shield,
+      label: "Privacy Policy",
+      href: "/privacy"
+    }
+  ];
+
   return (
     <AppLayout>
       {/* Header */}
@@ -111,7 +119,7 @@ export default function ProfilePage() {
         </div>
 
         {/* Menu Items */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 mb-6">
           {menuItems.map((item, index) => {
             const Icon = item.icon;
             return (
@@ -125,6 +133,31 @@ export default function ProfilePage() {
                   <div className="w-2 h-2 bg-gray-300 rounded-full"></div>
                 </button>
                 {index < menuItems.length - 1 && (
+                  <div className="border-b border-gray-100 mx-4"></div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Legal Items */}
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 mb-6">
+          <div className="p-3 border-b border-gray-100">
+            <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wide">Legal</h3>
+          </div>
+          {legalItems.map((item, index) => {
+            const Icon = item.icon;
+            return (
+              <div key={item.label}>
+                <button 
+                  className="w-full flex items-center space-x-3 p-4 hover:bg-gray-50 transition-colors"
+                  onClick={() => router.push(item.href)}
+                >
+                  <Icon className="w-5 h-5 text-gray-500" />
+                  <span className="flex-1 text-left text-gray-900">{item.label}</span>
+                  <div className="w-2 h-2 bg-gray-300 rounded-full"></div>
+                </button>
+                {index < legalItems.length - 1 && (
                   <div className="border-b border-gray-100 mx-4"></div>
                 )}
               </div>

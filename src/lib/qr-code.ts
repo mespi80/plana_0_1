@@ -39,6 +39,7 @@ export class QRCodeService {
       const qrCodeDataURL = await QRCode.toDataURL(qrData, {
         errorCorrectionLevel: 'M',
         type: 'image/png',
+        quality: 0.92,
         margin: 1,
         color: {
           dark: '#000000',
@@ -72,6 +73,7 @@ export class QRCodeService {
       const qrCodeDataURL = await QRCode.toDataURL(qrData, {
         errorCorrectionLevel: 'M',
         type: 'image/png',
+        quality: 0.92,
         margin: 1,
         color: {
           dark: '#7c3aed', // Purple theme
@@ -185,6 +187,7 @@ export class QRCodeService {
       const qrCodeDataURL = await QRCode.toDataURL(qrData, {
         errorCorrectionLevel: 'H',
         type: 'image/png',
+        quality: 1.0,
         margin: 2,
         color: {
           dark: '#000000',
