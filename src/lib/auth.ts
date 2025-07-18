@@ -1,12 +1,12 @@
-import { createClient } from '@supabase/supabase-js';
-import { User, UserRole, LoginCredentials, SignUpData } from '@/types/auth';
+import { User } from '@supabase/supabase-js';
+import { supabase } from './supabase';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-
-export const supabase = supabaseUrl && supabaseAnonKey 
-  ? createClient(supabaseUrl, supabaseAnonKey)
-  : null;
+export interface SignUpData {
+  email: string;
+  password: string;
+  full_name: string;
+  role?: 'user' | 'business' | 'admin';
+}
 
 export class AuthService {
   /**
@@ -78,46 +78,31 @@ export class AuthService {
   }
 
   /**
-   * Sign in user
+   * Sign in a user
    */
-  static async signIn(credentials: LoginCredentials): Promise<{ user: User | null; error: string | null }> {
+  static async signIn(email: string, password: string): Promise<{ user: User | null; error: string | null }> {
     if (!supabase) {
       return { user: null, error: 'Supabase is not configured. Please set environment variables.' };
     }
 
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
-        email: credentials.email,
-        password: credentials.password,
+        email,
+        password,
       });
 
       if (error) {
         return { user: null, error: error.message };
       }
 
-      if (data.user) {
-        // Get user profile with role
-        const { data: profile, error: profileError } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', data.user.id)
-          .single();
-
-        if (profileError) {
-          return { user: null, error: profileError.message };
-        }
-
-        return { user: profile as User, error: null };
-      }
-
-      return { user: null, error: 'Failed to sign in' };
+      return { user: data.user, error: null };
     } catch (error) {
       return { user: null, error: 'An unexpected error occurred' };
     }
   }
 
   /**
-   * Sign out user
+   * Sign out the current user
    */
   static async signOut(): Promise<{ error: string | null }> {
     if (!supabase) {
@@ -133,168 +118,56 @@ export class AuthService {
   }
 
   /**
-   * Get current user
+   * Get the current session
    */
-  static async getCurrentUser(): Promise<{ user: User | null; error: string | null }> {
+  static async getSession(): Promise<{ session: any; error: string | null }> {
     if (!supabase) {
-      return { user: null, error: null }; // Return null user without error for graceful handling
+      return { session: null, error: 'Supabase is not configured. Please set environment variables.' };
     }
 
     try {
-      const { data: { user }, error } = await supabase.auth.getUser();
-
-      if (error) {
-        // Handle missing session gracefully
-        if (error.message.includes('Auth session missing') || error.message.includes('No user found')) {
-          return { user: null, error: null };
-        }
-        return { user: null, error: error.message };
-      }
-
-      if (!user) {
-        return { user: null, error: null };
-      }
-
-      // Get user profile with role
-      const { data: profile, error: profileError } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', user.id)
-        .single();
-
-      if (profileError) {
-        // If profile doesn't exist, user might not be fully set up
-        if (profileError.code === 'PGRST116') {
-          return { user: null, error: null };
-        }
-        return { user: null, error: profileError.message };
-      }
-
-      return { user: profile as User, error: null };
+      const { data: { session }, error } = await supabase.auth.getSession();
+      return { session, error: error?.message || null };
     } catch (error) {
-      return { user: null, error: 'An unexpected error occurred' };
+      return { session: null, error: 'An unexpected error occurred' };
     }
   }
 
   /**
-   * Update user role (admin only)
+   * Get the current user
    */
-  static async updateUserRole(userId: string, newRole: UserRole): Promise<{ error: string | null }> {
-    if (!supabase) {
-      return { error: 'Supabase is not configured. Please set environment variables.' };
-    }
-
-    try {
-      const { error } = await supabase
-        .from('profiles')
-        .update({ role: newRole })
-        .eq('id', userId);
-
-      return { error: error?.message || null };
-    } catch (error) {
-      return { error: 'An unexpected error occurred' };
-    }
-  }
-
-  /**
-   * Get all users (admin only)
-   */
-  static async getAllUsers(): Promise<{ users: User[] | null; error: string | null }> {
-    if (!supabase) {
-      return { users: null, error: 'Supabase is not configured. Please set environment variables.' };
-    }
-
-    try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (error) {
-        return { users: null, error: error.message };
-      }
-
-      return { users: data as User[], error: null };
-    } catch (error) {
-      return { users: null, error: 'An unexpected error occurred' };
-    }
-  }
-
-  /**
-   * Delete user (admin only)
-   */
-  static async deleteUser(userId: string): Promise<{ error: string | null }> {
-    if (!supabase) {
-      return { error: 'Supabase is not configured. Please set environment variables.' };
-    }
-
-    try {
-      const { error } = await supabase
-        .from('profiles')
-        .delete()
-        .eq('id', userId);
-
-      return { error: error?.message || null };
-    } catch (error) {
-      return { error: 'An unexpected error occurred' };
-    }
-  }
-
-  /**
-   * Update user profile
-   */
-  static async updateProfile(userId: string, updates: Partial<User>): Promise<{ user: User | null; error: string | null }> {
+  static async getUser(): Promise<{ user: User | null; error: string | null }> {
     if (!supabase) {
       return { user: null, error: 'Supabase is not configured. Please set environment variables.' };
     }
 
     try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .update(updates)
-        .eq('id', userId)
-        .select()
-        .single();
-
-      if (error) {
-        return { user: null, error: error.message };
-      }
-
-      return { user: data as User, error: null };
+      const { data: { user }, error } = await supabase.auth.getUser();
+      return { user, error: error?.message || null };
     } catch (error) {
       return { user: null, error: 'An unexpected error occurred' };
     }
-  }
-
-  /**
-   * Check if user has required role
-   */
-  static hasRole(user: User | null, requiredRole: UserRole): boolean {
-    if (!user) return false;
-    
-    const roleHierarchy = {
-      'user': 1,
-      'business': 2,
-      'admin': 3
-    };
-    
-    const userRoleLevel = roleHierarchy[user.role as UserRole] || 0;
-    const requiredRoleLevel = roleHierarchy[requiredRole] || 0;
-    
-    return userRoleLevel >= requiredRoleLevel;
   }
 
   /**
    * Check if user can access business features
    */
   static canAccessBusiness(user: User | null): boolean {
-    return this.hasRole(user, 'business');
+    if (!user) return false;
+    
+    // Check if user has business role in metadata
+    const role = user.user_metadata?.role;
+    return role === 'business' || role === 'admin';
   }
 
   /**
    * Check if user can access admin features
    */
   static canAccessAdmin(user: User | null): boolean {
-    return this.hasRole(user, 'admin');
+    if (!user) return false;
+    
+    // Check if user has admin role in metadata
+    const role = user.user_metadata?.role;
+    return role === 'admin';
   }
 } 

@@ -74,11 +74,23 @@ export default function BusinessDashboardPage() {
   // Load business data
   useEffect(() => {
     const loadBusiness = async () => {
-      if (!supabase) return;
+      if (!supabase) {
+        console.error('Supabase client not available');
+        return;
+      }
 
       try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session?.user) return;
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        
+        if (sessionError) {
+          console.error('Error getting session:', sessionError);
+          return;
+        }
+        
+        if (!session?.user) {
+          console.log('No user session found');
+          return;
+        }
 
         const { data: businessData, error } = await supabase
           .from('businesses')
@@ -88,6 +100,25 @@ export default function BusinessDashboardPage() {
 
         if (error) {
           console.error('Error loading business:', error);
+          // If no business found, create one
+          if (error.code === 'PGRST116') {
+            const { data: newBusiness, error: createError } = await supabase
+              .from('businesses')
+              .insert({
+                owner_id: session.user.id,
+                name: `${session.user.user_metadata?.full_name || 'User'}'s Business`,
+                business_type: 'general',
+              })
+              .select()
+              .single();
+
+            if (createError) {
+              console.error('Error creating business:', createError);
+            } else {
+              setBusiness(newBusiness);
+              await loadBusinessStats(newBusiness.id);
+            }
+          }
         } else {
           setBusiness(businessData);
           await loadBusinessStats(businessData.id);
@@ -101,26 +132,41 @@ export default function BusinessDashboardPage() {
   }, []);
 
   const loadBusinessStats = async (businessId: string) => {
-    if (!supabase) return;
+    if (!supabase) {
+      console.error('Supabase client not available');
+      return;
+    }
 
     try {
       // Get events count
-      const { count: totalEvents } = await supabase
+      const { count: totalEvents, error: eventsError } = await supabase
         .from('events')
         .select('*', { count: 'exact', head: true })
         .eq('venue.business_id', businessId);
 
-      const { count: activeEvents } = await supabase
+      if (eventsError) {
+        console.error('Error loading total events:', eventsError);
+      }
+
+      const { count: activeEvents, error: activeEventsError } = await supabase
         .from('events')
         .select('*', { count: 'exact', head: true })
         .eq('venue.business_id', businessId)
         .eq('is_active', true);
 
+      if (activeEventsError) {
+        console.error('Error loading active events:', activeEventsError);
+      }
+
       // Get bookings count and revenue
-      const { data: bookings } = await supabase
+      const { data: bookings, error: bookingsError } = await supabase
         .from('bookings')
         .select('total_amount')
         .eq('event.venue.business_id', businessId);
+
+      if (bookingsError) {
+        console.error('Error loading bookings:', bookingsError);
+      }
 
       const totalBookings = bookings?.length || 0;
       const totalRevenue = bookings?.reduce((sum, booking) => sum + booking.total_amount, 0) || 0;
