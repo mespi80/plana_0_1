@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { supabase } from "@/lib/supabase";
+import { getOAuthConfig } from "@/lib/auth-config";
 import { Eye, EyeOff, Mail, Lock, User, ArrowLeft } from "lucide-react";
 import Link from "next/link";
 
@@ -33,10 +34,11 @@ export default function LoginPage() {
     setError(null);
     
     try {
+      const oauthConfig = getOAuthConfig();
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
-          redirectTo: `${window.location.origin}/`,
+          redirectTo: oauthConfig.redirectTo,
         },
       });
       
@@ -138,8 +140,9 @@ export default function LoginPage() {
     setError(null);
 
     try {
+      const oauthConfig = getOAuthConfig();
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/auth/reset-password`,
+        redirectTo: `${oauthConfig.baseUrl}/auth/reset-password`,
       });
 
       if (error) {
