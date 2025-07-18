@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { BusinessGuard } from "@/components/auth/role-guard";
-import { BusinessDashboardLayout } from "@/components/business/business-dashboard-layout";
+import { AppLayout } from "@/components/layout/app-layout";
 import { EventCreationForm } from "@/components/business/event-creation-form";
 import { VenueCreationForm } from "@/components/business/venue-creation-form";
 import { EventManagement } from "@/components/business/event-management";
@@ -18,7 +18,9 @@ import {
   BarChart3,
   Settings,
   Building2,
-  Plus
+  Plus,
+  Activity,
+  QrCode
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 
@@ -55,6 +57,15 @@ interface Business {
   description: string;
   business_type: string;
 }
+
+const businessTabs = [
+  { id: "overview", label: "Overview", icon: Activity },
+  { id: "events", label: "Events", icon: Calendar },
+  { id: "venues", label: "Venues", icon: Building2 },
+  { id: "scanner", label: "Scanner", icon: QrCode },
+  { id: "analytics", label: "Analytics", icon: BarChart3 },
+  { id: "settings", label: "Settings", icon: Settings }
+];
 
 export default function BusinessDashboardPage() {
   const [activeTab, setActiveTab] = useState("overview");
@@ -200,69 +211,35 @@ export default function BusinessDashboardPage() {
   };
 
   const handleEventFormSubmit = async (data: any) => {
-    if (!business) return;
-    
     setIsLoading(true);
-    
     try {
       const response = await fetch('/api/events', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          ...data,
-          venueId: data.venueId
-        }),
+        body: JSON.stringify(data),
       });
 
       if (response.ok) {
-        const eventData = await response.json();
-        
-        // Set preview data and show preview
-        setPreviewEventData({
-          id: eventData.id,
-          title: eventData.title,
-          description: eventData.description,
-          category: eventData.category,
-          date: data.date,
-          time: data.time,
-          duration: data.duration,
-          venue: "Selected Venue", // This will be updated with actual venue name
-          address: "Venue Address",
-          city: "City",
-          state: "State",
-          zipCode: "ZIP",
-          price: eventData.price,
-          capacity: eventData.capacity,
-          images: data.images.map((file: File) => URL.createObjectURL(file)),
-          tags: data.tags,
-          isActive: eventData.is_active
-        });
-        
         setShowEventForm(false);
-        setShowEventPreview(true);
-        
-        // Refresh stats
-        await loadBusinessStats(business.id);
+        // Refresh business stats
+        if (business) {
+          await loadBusinessStats(business.id);
+        }
       } else {
-        const errorData = await response.json();
-        console.error('Error creating event:', errorData);
-        alert('Failed to create event: ' + errorData.error);
+        const error = await response.json();
+        alert('Error creating event: ' + error.message);
       }
     } catch (error) {
-      console.error('Error creating event:', error);
-      alert('Failed to create event');
+      alert('Error creating event');
     } finally {
       setIsLoading(false);
     }
   };
 
   const handleVenueFormSubmit = async (data: any) => {
-    if (!business) return;
-    
     setIsLoading(true);
-    
     try {
       const response = await fetch('/api/venues', {
         method: 'POST',
@@ -271,21 +248,22 @@ export default function BusinessDashboardPage() {
         },
         body: JSON.stringify({
           ...data,
-          businessId: business.id
+          businessId: business?.id
         }),
       });
 
       if (response.ok) {
         setShowVenueForm(false);
-        alert('Venue created successfully!');
+        // Refresh business stats
+        if (business) {
+          await loadBusinessStats(business.id);
+        }
       } else {
-        const errorData = await response.json();
-        console.error('Error creating venue:', errorData);
-        alert('Failed to create venue: ' + errorData.error);
+        const error = await response.json();
+        alert('Error creating venue: ' + error.message);
       }
     } catch (error) {
-      console.error('Error creating venue:', error);
-      alert('Failed to create venue');
+      alert('Error creating venue');
     } finally {
       setIsLoading(false);
     }
@@ -300,33 +278,32 @@ export default function BusinessDashboardPage() {
   };
 
   const handleEditEvent = (eventId: string) => {
-    console.log("Editing event:", eventId);
+    console.log("Edit event:", eventId);
   };
 
   const handleViewEvent = (eventId: string) => {
-    console.log("Viewing event:", eventId);
+    console.log("View event:", eventId);
   };
 
   const handleDeleteEvent = async (eventId: string) => {
     if (!confirm('Are you sure you want to delete this event?')) return;
-    
+
     try {
       const response = await fetch(`/api/events/${eventId}`, {
         method: 'DELETE',
       });
 
       if (response.ok) {
-        alert('Event deleted successfully!');
+        // Refresh business stats
         if (business) {
           await loadBusinessStats(business.id);
         }
       } else {
-        const errorData = await response.json();
-        alert('Failed to delete event: ' + errorData.error);
+        const error = await response.json();
+        alert('Error deleting event: ' + error.message);
       }
     } catch (error) {
-      console.error('Error deleting event:', error);
-      alert('Failed to delete event');
+      alert('Error deleting event');
     }
   };
 
@@ -343,17 +320,16 @@ export default function BusinessDashboardPage() {
       });
 
       if (response.ok) {
-        alert('Event status updated successfully!');
+        // Refresh business stats
         if (business) {
           await loadBusinessStats(business.id);
         }
       } else {
-        const errorData = await response.json();
-        alert('Failed to update event status: ' + errorData.error);
+        const error = await response.json();
+        alert('Error updating event: ' + error.message);
       }
     } catch (error) {
-      console.error('Error updating event status:', error);
-      alert('Failed to update event status');
+      alert('Error updating event');
     }
   };
 
@@ -368,16 +344,76 @@ export default function BusinessDashboardPage() {
   };
 
   const handlePreviewPublish = () => {
-    console.log("Publishing event:", previewEventData);
     setShowEventPreview(false);
-    setPreviewEventData(null);
+    // Handle event publishing
+  };
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD'
+    }).format(amount);
   };
 
   const renderOverviewContent = () => (
-    <div className="p-6 space-y-6">
-      <div>
-        <h2 className="text-2xl font-bold text-gray-900 mb-2">Welcome back!</h2>
-        <p className="text-gray-600">Here&apos;s what&apos;s happening with your business today.</p>
+    <div className="space-y-6">
+      {/* Stats Cards */}
+      <div className="grid grid-cols-2 gap-4">
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center space-x-3">
+              <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                <Calendar className="w-5 h-5 text-blue-600" />
+              </div>
+              <div>
+                <p className="text-sm text-gray-600">Total Events</p>
+                <p className="text-2xl font-bold text-gray-900">{businessStats.totalEvents}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center space-x-3">
+              <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
+                <Activity className="w-5 h-5 text-green-600" />
+              </div>
+              <div>
+                <p className="text-sm text-gray-600">Active Events</p>
+                <p className="text-2xl font-bold text-gray-900">{businessStats.activeEvents}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center space-x-3">
+              <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
+                <Users className="w-5 h-5 text-purple-600" />
+              </div>
+              <div>
+                <p className="text-sm text-gray-600">Total Bookings</p>
+                <p className="text-2xl font-bold text-gray-900">{businessStats.totalBookings}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center space-x-3">
+              <div className="w-10 h-10 bg-yellow-100 rounded-lg flex items-center justify-center">
+                <DollarSign className="w-5 h-5 text-yellow-600" />
+              </div>
+              <div>
+                <p className="text-sm text-gray-600">Total Revenue</p>
+                <p className="text-2xl font-bold text-gray-900">{formatCurrency(businessStats.totalRevenue)}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Quick Actions */}
@@ -386,20 +422,14 @@ export default function BusinessDashboardPage() {
           <CardTitle>Quick Actions</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-2 gap-4">
             <Button onClick={handleCreateEvent} className="h-20 flex flex-col items-center justify-center">
               <Calendar className="w-6 h-6 mb-2" />
-              <span>Create New Event</span>
+              <span>Create Event</span>
             </Button>
-            
             <Button onClick={handleCreateVenue} className="h-20 flex flex-col items-center justify-center">
               <Building2 className="w-6 h-6 mb-2" />
-              <span>Create New Venue</span>
-            </Button>
-            
-            <Button variant="outline" className="h-20 flex flex-col items-center justify-center">
-              <BarChart3 className="w-6 h-6 mb-2" />
-              <span>View Analytics</span>
+              <span>Create Venue</span>
             </Button>
           </div>
         </CardContent>
@@ -410,40 +440,38 @@ export default function BusinessDashboardPage() {
         <CardHeader>
           <CardTitle>Recent Activity</CardTitle>
         </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            <div className="flex items-center space-x-3 p-3 bg-green-50 rounded-lg">
-              <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
-                <Users className="w-4 h-4 text-green-600" />
-              </div>
-              <div>
-                <p className="text-sm font-medium text-gray-900">New booking received</p>
-                <p className="text-xs text-gray-600">Jazz Night at Blue Note - 2 tickets</p>
-              </div>
-              <span className="text-xs text-gray-500 ml-auto">2 min ago</span>
+        <CardContent className="space-y-4">
+          <div className="flex items-center space-x-3 p-3 bg-green-50 rounded-lg">
+            <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
+              <Users className="w-4 h-4 text-green-600" />
             </div>
+            <div>
+              <p className="text-sm font-medium text-gray-900">New booking</p>
+              <p className="text-xs text-gray-600">2 tickets booked for Jazz Night</p>
+            </div>
+            <span className="text-xs text-gray-500 ml-auto">5 min ago</span>
+          </div>
 
-            <div className="flex items-center space-x-3 p-3 bg-blue-50 rounded-lg">
-              <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                <DollarSign className="w-4 h-4 text-blue-600" />
-              </div>
-              <div>
-                <p className="text-sm font-medium text-gray-900">Payment received</p>
-                <p className="text-xs text-gray-600">$100.00 from Comedy Show booking</p>
-              </div>
-              <span className="text-xs text-gray-500 ml-auto">15 min ago</span>
+          <div className="flex items-center space-x-3 p-3 bg-blue-50 rounded-lg">
+            <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+              <DollarSign className="w-4 h-4 text-blue-600" />
             </div>
+            <div>
+              <p className="text-sm font-medium text-gray-900">Payment received</p>
+              <p className="text-xs text-gray-600">$100.00 from Comedy Show booking</p>
+            </div>
+            <span className="text-xs text-gray-500 ml-auto">15 min ago</span>
+          </div>
 
-            <div className="flex items-center space-x-3 p-3 bg-purple-50 rounded-lg">
-              <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center">
-                <Calendar className="w-4 h-4 text-purple-600" />
-              </div>
-              <div>
-                <p className="text-sm font-medium text-gray-900">Event published</p>
-                <p className="text-xs text-gray-600">Tech Startup Meetup is now live</p>
-              </div>
-              <span className="text-xs text-gray-500 ml-auto">1 hour ago</span>
+          <div className="flex items-center space-x-3 p-3 bg-purple-50 rounded-lg">
+            <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center">
+              <Calendar className="w-4 h-4 text-purple-600" />
             </div>
+            <div>
+              <p className="text-sm font-medium text-gray-900">Event published</p>
+              <p className="text-xs text-gray-600">Tech Startup Meetup is now live</p>
+            </div>
+            <span className="text-xs text-gray-500 ml-auto">1 hour ago</span>
           </div>
         </CardContent>
       </Card>
@@ -451,7 +479,7 @@ export default function BusinessDashboardPage() {
   );
 
   const renderEventsContent = () => (
-    <div className="p-6">
+    <div>
       {showEventForm ? (
         <EventCreationForm
           onSubmit={handleEventFormSubmit}
@@ -473,7 +501,7 @@ export default function BusinessDashboardPage() {
   );
 
   const renderVenuesContent = () => (
-    <div className="p-6">
+    <div>
       {showVenueForm ? (
         <VenueCreationForm
           onSubmit={handleVenueFormSubmit}
@@ -514,7 +542,7 @@ export default function BusinessDashboardPage() {
   );
 
   const renderScannerContent = () => (
-    <div className="p-6">
+    <div className="space-y-6">
       <div className="mb-6">
         <h2 className="text-2xl font-bold text-gray-900 mb-2">QR Code Scanner</h2>
         <p className="text-gray-600">Scan customer QR codes to validate tickets and check them in</p>
@@ -541,7 +569,7 @@ export default function BusinessDashboardPage() {
   );
 
   const renderAnalyticsContent = () => (
-    <div className="p-6">
+    <div className="space-y-6">
       <div className="mb-6">
         <h2 className="text-2xl font-bold text-gray-900 mb-2">Analytics Dashboard</h2>
         <p className="text-gray-600">View detailed analytics and insights for your business</p>
@@ -562,7 +590,7 @@ export default function BusinessDashboardPage() {
   );
 
   const renderSettingsContent = () => (
-    <div className="p-6">
+    <div className="space-y-6">
       <div className="mb-6">
         <h2 className="text-2xl font-bold text-gray-900 mb-2">Business Settings</h2>
         <p className="text-gray-600">Manage your business profile and preferences</p>
@@ -603,12 +631,51 @@ export default function BusinessDashboardPage() {
 
   return (
     <BusinessGuard>
-      <BusinessDashboardLayout
-        activeTab={activeTab}
-        onTabChange={handleTabChange}
-        businessStats={businessStats}
-      >
-        {renderContent()}
+      <AppLayout>
+        {/* Header */}
+        <header className="bg-white border-b border-gray-200 px-4 py-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <Building2 className="w-8 h-8 text-purple-600" />
+              <div>
+                <h1 className="text-xl font-bold text-gray-900">Business Dashboard</h1>
+                <p className="text-sm text-gray-600">Manage your events and track performance</p>
+              </div>
+            </div>
+          </div>
+        </header>
+
+        {/* Tab Navigation */}
+        <div className="bg-white border-b border-gray-200">
+          <div className="flex space-x-1 px-4 py-2 overflow-x-auto">
+            {businessTabs.map((tab) => {
+              const Icon = tab.icon;
+              const isActive = activeTab === tab.id;
+              
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => handleTabChange(tab.id)}
+                  className={`flex items-center space-x-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${
+                    isActive
+                      ? 'bg-purple-100 text-purple-700'
+                      : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+                  }`}
+                >
+                  <Icon className="w-4 h-4" />
+                  <span>{tab.label}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Main Content */}
+        <div className="flex-1 p-4 bg-gray-50">
+          <div className="max-w-4xl mx-auto">
+            {renderContent()}
+          </div>
+        </div>
         
         {/* Event Preview Modal */}
         {showEventPreview && previewEventData && (
@@ -619,7 +686,7 @@ export default function BusinessDashboardPage() {
             onPublish={handlePreviewPublish}
           />
         )}
-      </BusinessDashboardLayout>
+      </AppLayout>
     </BusinessGuard>
   );
 } 
