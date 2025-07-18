@@ -74,37 +74,60 @@ export function EventManagement({
       }
 
       try {
+        // First, get all venues for this business
+        const { data: venues, error: venuesError } = await supabase
+          .from('venues')
+          .select('id, name, address')
+          .eq('business_id', businessId);
+
+        if (venuesError) {
+          console.error('Error loading venues:', venuesError);
+          setEvents([]);
+          setIsLoading(false);
+          return;
+        }
+
+        const venueIds = venues?.map(v => v.id) || [];
+        const venueMap = new Map(venues?.map(v => [v.id, v]) || []);
+
+        if (venueIds.length === 0) {
+          setEvents([]);
+          setIsLoading(false);
+          return;
+        }
+
+        // Get events for these venues
         const { data, error } = await supabase
           .from('events')
-          .select(`
-            *,
-            venue:venues(*)
-          `)
-          .eq('venue.business_id', businessId);
+          .select('*')
+          .in('venue_id', venueIds);
 
         if (error) {
           console.error('Error loading events:', error);
           setEvents([]);
         } else {
           // Transform database events to BusinessEvent format
-          const transformedEvents: BusinessEvent[] = (data || []).map(event => ({
-            id: event.id,
-            title: event.title,
-            description: event.description || '',
-            category: event.category,
-            date: new Date(event.start_time).toISOString().split('T')[0],
-            time: new Date(event.start_time).toTimeString().slice(0, 5),
-            venue: event.venue?.name || 'Unknown Venue',
-            address: event.venue?.address || 'Unknown Address',
-            price: event.price || 0,
-            capacity: event.capacity,
-            bookedCount: event.capacity - event.available_tickets,
-            revenue: 0, // This would need to be calculated from bookings
-            status: event.is_active ? 'active' : 'inactive',
-            imageUrl: "/api/placeholder/300/200",
-            tags: [],
-            createdAt: event.created_at
-          }));
+          const transformedEvents: BusinessEvent[] = (data || []).map(event => {
+            const venue = venueMap.get(event.venue_id);
+            return {
+              id: event.id,
+              title: event.title,
+              description: event.description || '',
+              category: event.category,
+              date: new Date(event.start_time).toISOString().split('T')[0],
+              time: new Date(event.start_time).toTimeString().slice(0, 5),
+              venue: venue?.name || 'Unknown Venue',
+              address: venue?.address || 'Unknown Address',
+              price: event.price || 0,
+              capacity: event.capacity,
+              bookedCount: event.capacity - event.available_tickets,
+              revenue: 0, // This would need to be calculated from bookings
+              status: event.is_active ? 'active' : 'inactive',
+              imageUrl: "/api/placeholder/300/200",
+              tags: [],
+              createdAt: event.created_at
+            };
+          });
           
           setEvents(transformedEvents);
         }

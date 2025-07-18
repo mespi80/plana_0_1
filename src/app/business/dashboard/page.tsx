@@ -149,31 +149,49 @@ export default function BusinessDashboardPage() {
     }
 
     try {
-      // Get events count
-      const { count: totalEvents, error: eventsError } = await supabase
+      // First, get all venues for this business
+      const { data: venues, error: venuesError } = await supabase
+        .from('venues')
+        .select('id')
+        .eq('business_id', businessId);
+
+      if (venuesError) {
+        console.error('Error loading venues:', venuesError);
+        return;
+      }
+
+      const venueIds = venues?.map(v => v.id) || [];
+
+      if (venueIds.length === 0) {
+        // No venues yet, set all stats to 0
+        setBusinessStats({
+          totalEvents: 0,
+          activeEvents: 0,
+          totalRevenue: 0,
+          totalBookings: 0
+        });
+        return;
+      }
+
+      // Get events for these venues
+      const { data: events, error: eventsError } = await supabase
         .from('events')
-        .select('*', { count: 'exact', head: true })
-        .eq('venue.business_id', businessId);
+        .select('id, is_active')
+        .in('venue_id', venueIds);
 
       if (eventsError) {
-        console.error('Error loading total events:', eventsError);
+        console.error('Error loading events:', eventsError);
       }
 
-      const { count: activeEvents, error: activeEventsError } = await supabase
-        .from('events')
-        .select('*', { count: 'exact', head: true })
-        .eq('venue.business_id', businessId)
-        .eq('is_active', true);
+      const totalEvents = events?.length || 0;
+      const activeEvents = events?.filter(e => e.is_active).length || 0;
+      const eventIds = events?.map(e => e.id) || [];
 
-      if (activeEventsError) {
-        console.error('Error loading active events:', activeEventsError);
-      }
-
-      // Get bookings count and revenue
+      // Get bookings for these events
       const { data: bookings, error: bookingsError } = await supabase
         .from('bookings')
         .select('total_amount')
-        .eq('event.venue.business_id', businessId);
+        .in('event_id', eventIds);
 
       if (bookingsError) {
         console.error('Error loading bookings:', bookingsError);
@@ -183,8 +201,8 @@ export default function BusinessDashboardPage() {
       const totalRevenue = bookings?.reduce((sum, booking) => sum + booking.total_amount, 0) || 0;
 
       setBusinessStats({
-        totalEvents: totalEvents || 0,
-        activeEvents: activeEvents || 0,
+        totalEvents,
+        activeEvents,
         totalRevenue,
         totalBookings
       });
