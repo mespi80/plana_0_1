@@ -8,6 +8,19 @@ export interface SignUpData {
   role?: 'user' | 'business' | 'admin';
 }
 
+export interface UserProfile {
+  id: string;
+  email: string;
+  full_name: string;
+  role: 'user' | 'business' | 'admin';
+  avatar_url?: string;
+  interests?: string[];
+  location_lat?: number;
+  location_lng?: number;
+  created_at: string;
+  updated_at: string;
+}
+
 export class AuthService {
   /**
    * Sign up a new user
@@ -150,24 +163,69 @@ export class AuthService {
   }
 
   /**
-   * Check if user can access business features
+   * Get current user with profile data
    */
-  static canAccessBusiness(user: User | null): boolean {
+  static async getCurrentUser(): Promise<{ user: UserProfile | null; error: string | null }> {
+    if (!supabase) {
+      return { user: null, error: 'Supabase is not configured. Please set environment variables.' };
+    }
+
+    try {
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      
+      if (authError || !user) {
+        return { user: null, error: 'No user found' };
+      }
+
+      // Get user profile from profiles table
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .single();
+
+      if (profileError) {
+        return { user: null, error: 'Profile not found' };
+      }
+
+      return { user: profile as UserProfile, error: null };
+    } catch (error) {
+      return { user: null, error: 'An unexpected error occurred' };
+    }
+  }
+
+  /**
+   * Check if user has a specific role
+   */
+  static hasRole(user: UserProfile | null, requiredRole: 'user' | 'business' | 'admin'): boolean {
     if (!user) return false;
     
-    // Check if user has business role in metadata
-    const role = user.user_metadata?.role;
-    return role === 'business' || role === 'admin';
+    const userRole = user.role;
+    
+    // Role hierarchy: admin > business > user
+    switch (requiredRole) {
+      case 'admin':
+        return userRole === 'admin';
+      case 'business':
+        return userRole === 'business' || userRole === 'admin';
+      case 'user':
+        return true; // All authenticated users have user access
+      default:
+        return false;
+    }
+  }
+
+  /**
+   * Check if user can access business features
+   */
+  static canAccessBusiness(user: UserProfile | null): boolean {
+    return this.hasRole(user, 'business');
   }
 
   /**
    * Check if user can access admin features
    */
-  static canAccessAdmin(user: User | null): boolean {
-    if (!user) return false;
-    
-    // Check if user has admin role in metadata
-    const role = user.user_metadata?.role;
-    return role === 'admin';
+  static canAccessAdmin(user: UserProfile | null): boolean {
+    return this.hasRole(user, 'admin');
   }
 } 
