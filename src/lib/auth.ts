@@ -1,16 +1,22 @@
 import { createClient } from '@supabase/supabase-js';
 import { User, UserRole, LoginCredentials, SignUpData } from '@/types/auth';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+export const supabase = supabaseUrl && supabaseAnonKey 
+  ? createClient(supabaseUrl, supabaseAnonKey)
+  : null;
 
 export class AuthService {
   /**
    * Sign up a new user
    */
   static async signUp(data: SignUpData): Promise<{ user: User | null; error: string | null }> {
+    if (!supabase) {
+      return { user: null, error: 'Supabase is not configured. Please set environment variables.' };
+    }
+
     try {
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: data.email,
@@ -75,6 +81,10 @@ export class AuthService {
    * Sign in user
    */
   static async signIn(credentials: LoginCredentials): Promise<{ user: User | null; error: string | null }> {
+    if (!supabase) {
+      return { user: null, error: 'Supabase is not configured. Please set environment variables.' };
+    }
+
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
         email: credentials.email,
@@ -110,6 +120,10 @@ export class AuthService {
    * Sign out user
    */
   static async signOut(): Promise<{ error: string | null }> {
+    if (!supabase) {
+      return { error: 'Supabase is not configured. Please set environment variables.' };
+    }
+
     try {
       const { error } = await supabase.auth.signOut();
       return { error: error?.message || null };
@@ -122,6 +136,10 @@ export class AuthService {
    * Get current user
    */
   static async getCurrentUser(): Promise<{ user: User | null; error: string | null }> {
+    if (!supabase) {
+      return { user: null, error: null }; // Return null user without error for graceful handling
+    }
+
     try {
       const { data: { user }, error } = await supabase.auth.getUser();
 
@@ -162,6 +180,10 @@ export class AuthService {
    * Update user role (admin only)
    */
   static async updateUserRole(userId: string, newRole: UserRole): Promise<{ error: string | null }> {
+    if (!supabase) {
+      return { error: 'Supabase is not configured. Please set environment variables.' };
+    }
+
     try {
       const { error } = await supabase
         .from('profiles')
@@ -178,6 +200,10 @@ export class AuthService {
    * Get all users (admin only)
    */
   static async getAllUsers(): Promise<{ users: User[] | null; error: string | null }> {
+    if (!supabase) {
+      return { users: null, error: 'Supabase is not configured. Please set environment variables.' };
+    }
+
     try {
       const { data, error } = await supabase
         .from('profiles')
@@ -198,23 +224,45 @@ export class AuthService {
    * Delete user (admin only)
    */
   static async deleteUser(userId: string): Promise<{ error: string | null }> {
+    if (!supabase) {
+      return { error: 'Supabase is not configured. Please set environment variables.' };
+    }
+
     try {
-      // Delete user profile
-      const { error: profileError } = await supabase
+      const { error } = await supabase
         .from('profiles')
         .delete()
         .eq('id', userId);
 
-      if (profileError) {
-        return { error: profileError.message };
-      }
-
-      // Delete auth user (requires admin privileges)
-      const { error: authError } = await supabase.auth.admin.deleteUser(userId);
-
-      return { error: authError?.message || null };
+      return { error: error?.message || null };
     } catch (error) {
       return { error: 'An unexpected error occurred' };
+    }
+  }
+
+  /**
+   * Update user profile
+   */
+  static async updateProfile(userId: string, updates: Partial<User>): Promise<{ user: User | null; error: string | null }> {
+    if (!supabase) {
+      return { user: null, error: 'Supabase is not configured. Please set environment variables.' };
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .update(updates)
+        .eq('id', userId)
+        .select()
+        .single();
+
+      if (error) {
+        return { user: null, error: error.message };
+      }
+
+      return { user: data as User, error: null };
+    } catch (error) {
+      return { user: null, error: 'An unexpected error occurred' };
     }
   }
 
@@ -223,14 +271,17 @@ export class AuthService {
    */
   static hasRole(user: User | null, requiredRole: UserRole): boolean {
     if (!user) return false;
-
-    const roleHierarchy: Record<UserRole, number> = {
+    
+    const roleHierarchy = {
       'user': 1,
       'business': 2,
       'admin': 3
     };
-
-    return roleHierarchy[user.role] >= roleHierarchy[requiredRole];
+    
+    const userRoleLevel = roleHierarchy[user.role as UserRole] || 0;
+    const requiredRoleLevel = roleHierarchy[requiredRole] || 0;
+    
+    return userRoleLevel >= requiredRoleLevel;
   }
 
   /**
