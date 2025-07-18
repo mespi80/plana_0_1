@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
+import { supabase } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
 import { User, Settings, LogOut, MapPin, Bell, Shield, HelpCircle, CreditCard } from "lucide-react";
 import { AppLayout } from "@/components/layout/app-layout";
@@ -9,11 +9,15 @@ import { AppLayout } from "@/components/layout/app-layout";
 export default function ProfilePage() {
   const [user, setUser] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const supabase = createClientComponentClient();
   const router = useRouter();
 
   useEffect(() => {
     const getSession = async () => {
+      if (!supabase) {
+        router.push("/auth/login");
+        return;
+      }
+
       const { data: { session } } = await supabase.auth.getSession();
       
       if (!session) {
@@ -26,9 +30,14 @@ export default function ProfilePage() {
     };
 
     getSession();
-  }, [supabase.auth, router]);
+  }, [router]);
 
   const handleSignOut = async () => {
+    if (!supabase) {
+      router.push("/auth/login");
+      return;
+    }
+
     await supabase.auth.signOut();
     router.push("/auth/login");
   };

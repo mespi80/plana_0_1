@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
+import { supabase } from "@/lib/supabase";
 import { Eye, EyeOff, Mail, Lock, User, ArrowLeft } from "lucide-react";
 import Link from "next/link";
 
@@ -22,10 +22,13 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-  
-  const supabase = createClientComponentClient();
 
   const handleGoogleSignIn = async () => {
+    if (!supabase) {
+      setError("Authentication service is not available");
+      return;
+    }
+
     setIsLoading(true);
     setError(null);
     
@@ -49,6 +52,12 @@ export default function LoginPage() {
 
   const handleEmailSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!supabase) {
+      setError("Authentication service is not available");
+      return;
+    }
+
     setIsLoading(true);
     setError(null);
 
@@ -72,6 +81,12 @@ export default function LoginPage() {
 
   const handleEmailSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!supabase) {
+      setError("Authentication service is not available");
+      return;
+    }
+
     setIsLoading(true);
     setError(null);
 
@@ -113,6 +128,12 @@ export default function LoginPage() {
 
   const handleForgotPassword = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!supabase) {
+      setError("Authentication service is not available");
+      return;
+    }
+
     setIsLoading(true);
     setError(null);
 
