@@ -125,8 +125,16 @@ export class AuthService {
     try {
       const { data: { user }, error } = await supabase.auth.getUser();
 
-      if (error || !user) {
-        return { user: null, error: error?.message || 'No user found' };
+      if (error) {
+        // Handle missing session gracefully
+        if (error.message.includes('Auth session missing') || error.message.includes('No user found')) {
+          return { user: null, error: null };
+        }
+        return { user: null, error: error.message };
+      }
+
+      if (!user) {
+        return { user: null, error: null };
       }
 
       // Get user profile with role
@@ -137,6 +145,10 @@ export class AuthService {
         .single();
 
       if (profileError) {
+        // If profile doesn't exist, user might not be fully set up
+        if (profileError.code === 'PGRST116') {
+          return { user: null, error: null };
+        }
         return { user: null, error: profileError.message };
       }
 

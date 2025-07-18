@@ -1,10 +1,11 @@
 "use client";
 
+import { Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { AppLayout } from "@/components/layout/app-layout";
 import { PaymentConfirmation } from "@/components/payment/payment-confirmation";
 
-export default function PaymentConfirmationPage() {
+function PaymentConfirmationContent() {
   const searchParams = useSearchParams();
   
   // Get payment details from URL params or use defaults for demo
@@ -21,18 +22,26 @@ export default function PaymentConfirmationPage() {
   };
 
   return (
+    <PaymentConfirmation
+      paymentIntentId={paymentIntentId}
+      amount={amount}
+      eventTitle={eventTitle}
+      eventDate={eventDate}
+      venue={venue}
+      ticketQuantity={ticketQuantity}
+      onComplete={handleComplete}
+    />
+  );
+}
+
+export default function PaymentConfirmationPage() {
+  return (
     <AppLayout>
       <div className="flex-1 p-4 bg-gray-50">
         <div className="max-w-2xl mx-auto">
-          <PaymentConfirmation
-            paymentIntentId={paymentIntentId}
-            amount={amount}
-            eventTitle={eventTitle}
-            eventDate={eventDate}
-            venue={venue}
-            ticketQuantity={ticketQuantity}
-            onComplete={handleComplete}
-          />
+          <Suspense fallback={<div className="text-center py-8">Loading payment confirmation...</div>}>
+            <PaymentConfirmationContent />
+          </Suspense>
         </div>
       </div>
     </AppLayout>

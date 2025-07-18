@@ -23,7 +23,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   });
 
   useEffect(() => {
-    checkUser();
+    // Add a small delay to prevent rapid auth checks
+    const timer = setTimeout(() => {
+      checkUser();
+    }, 100);
+
+    return () => clearTimeout(timer);
   }, []);
 
   const checkUser = async () => {
@@ -31,7 +36,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const { user, error } = await AuthService.getCurrentUser();
       
       if (error) {
-        console.error('Auth check error:', error);
+        // Only log unexpected errors, not missing sessions
+        if (error !== 'No user found' && !error.includes('Auth session missing')) {
+          console.error('Auth check error:', error);
+        }
       }
 
       setAuthState({
