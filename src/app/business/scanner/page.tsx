@@ -7,7 +7,7 @@ import { CheckInValidation } from "@/components/qr-code/check-in-validation";
 import { CheckInHistory } from "@/components/business/check-in-history";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+// Tabs component removed - will implement custom tabs
 import { Badge } from "@/components/ui/badge";
 import { 
   CheckCircle, 
@@ -187,220 +187,242 @@ export default function BusinessScannerPage() {
           </div>
 
           {/* Main Content Tabs */}
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-            <TabsList className="grid w-full grid-cols-3">
-              <TabsTrigger value="scanner" className="flex items-center space-x-2">
-                <Camera className="w-4 h-4" />
-                <span>Scanner</span>
-              </TabsTrigger>
-              <TabsTrigger value="history" className="flex items-center space-x-2">
-                <Clock className="w-4 h-4" />
-                <span>History</span>
-              </TabsTrigger>
-              <TabsTrigger value="settings" className="flex items-center space-x-2">
-                <Settings className="w-4 h-4" />
-                <span>Settings</span>
-              </TabsTrigger>
-            </TabsList>
+          <div className="flex flex-col space-y-4">
+            <div className="flex space-x-2 border-b border-gray-200">
+              <button
+                onClick={() => setActiveTab("scanner")}
+                className={`py-2 px-4 text-sm font-medium ${
+                  activeTab === "scanner"
+                    ? "border-b-2 border-blue-500 text-blue-600"
+                    : "text-gray-600 hover:text-gray-800"
+                }`}
+              >
+                <Camera className="w-4 h-4 mr-1" /> Scanner
+              </button>
+              <button
+                onClick={() => setActiveTab("history")}
+                className={`py-2 px-4 text-sm font-medium ${
+                  activeTab === "history"
+                    ? "border-b-2 border-blue-500 text-blue-600"
+                    : "text-gray-600 hover:text-gray-800"
+                }`}
+              >
+                <Clock className="w-4 h-4 mr-1" /> History
+              </button>
+              <button
+                onClick={() => setActiveTab("settings")}
+                className={`py-2 px-4 text-sm font-medium ${
+                  activeTab === "settings"
+                    ? "border-b-2 border-blue-500 text-blue-600"
+                    : "text-gray-600 hover:text-gray-800"
+                }`}
+              >
+                <Settings className="w-4 h-4 mr-1" /> Settings
+              </button>
+            </div>
 
-            <TabsContent value="scanner" className="space-y-6">
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* Scanner */}
-                <div className="space-y-4">
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="flex items-center justify-between">
-                        <span>QR Code Scanner</span>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={resetScanner}
-                        >
-                          Reset
-                        </Button>
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <QRCodeScanner
-                        businessId={businessId}
-                        eventId={eventId}
-                        onCheckIn={handleCheckIn}
-                        onError={handleError}
-                      />
-                    </CardContent>
-                  </Card>
-                </div>
-
-                {/* Validation */}
-                <div className="space-y-4">
-                  {showValidation && scannedData ? (
-                    <CheckInValidation
-                      scannedData={scannedData}
-                      eventId={eventId}
-                      onValidate={handleValidate}
-                      onCheckIn={handleCheckIn}
-                    />
-                  ) : (
+            {activeTab === "scanner" && (
+              <div className="space-y-6">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  {/* Scanner */}
+                  <div className="space-y-4">
                     <Card>
-                      <CardContent className="text-center py-12">
-                        <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                          <Camera className="w-8 h-8 text-gray-400" />
-                        </div>
-                        <h3 className="text-lg font-medium text-gray-900 mb-2">Ready to scan</h3>
-                        <p className="text-gray-600">
-                          Scan a customer's QR code to begin the check-in process
-                        </p>
+                      <CardHeader>
+                        <CardTitle className="flex items-center justify-between">
+                          <span>QR Code Scanner</span>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={resetScanner}
+                          >
+                            Reset
+                          </Button>
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <QRCodeScanner
+                          businessId={businessId}
+                          eventId={eventId}
+                          onCheckIn={handleCheckIn}
+                          onError={handleError}
+                        />
                       </CardContent>
                     </Card>
-                  )}
-                </div>
-              </div>
-
-              {/* Instructions */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Scanner Instructions</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                      <h4 className="font-medium text-gray-900 mb-3">For Staff</h4>
-                      <ol className="text-sm text-gray-600 space-y-2">
-                        <li>1. Ask customer to show their QR code</li>
-                        <li>2. Point camera at the QR code</li>
-                        <li>3. Wait for validation to complete</li>
-                        <li>4. Confirm check-in if valid</li>
-                        <li>5. Welcome customer to the event</li>
-                      </ol>
-                    </div>
-                    <div>
-                      <h4 className="font-medium text-gray-900 mb-3">Troubleshooting</h4>
-                      <ul className="text-sm text-gray-600 space-y-2">
-                        <li>• If QR code doesn't scan, ask customer to refresh</li>
-                        <li>• For expired codes, direct to customer service</li>
-                        <li>• For wrong event codes, verify event details</li>
-                        <li>• For technical issues, use manual entry</li>
-                      </ul>
-                    </div>
                   </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
 
-            <TabsContent value="history" className="space-y-6">
+                  {/* Validation */}
+                  <div className="space-y-4">
+                    {showValidation && scannedData ? (
+                      <CheckInValidation
+                        scannedData={scannedData}
+                        eventId={eventId}
+                        onValidate={handleValidate}
+                        onCheckIn={handleCheckIn}
+                      />
+                    ) : (
+                      <Card>
+                        <CardContent className="text-center py-12">
+                          <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <Camera className="w-8 h-8 text-gray-400" />
+                          </div>
+                          <h3 className="text-lg font-medium text-gray-900 mb-2">Ready to scan</h3>
+                          <p className="text-gray-600">
+                            Scan a customer's QR code to begin the check-in process
+                          </p>
+                        </CardContent>
+                      </Card>
+                    )}
+                  </div>
+                </div>
+
+                {/* Instructions */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Scanner Instructions</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div>
+                        <h4 className="font-medium text-gray-900 mb-3">For Staff</h4>
+                        <ol className="text-sm text-gray-600 space-y-2">
+                          <li>1. Ask customer to show their QR code</li>
+                          <li>2. Point camera at the QR code</li>
+                          <li>3. Wait for validation to complete</li>
+                          <li>4. Confirm check-in if valid</li>
+                          <li>5. Welcome customer to the event</li>
+                        </ol>
+                      </div>
+                      <div>
+                        <h4 className="font-medium text-gray-900 mb-3">Troubleshooting</h4>
+                        <ul className="text-sm text-gray-600 space-y-2">
+                          <li>• If QR code doesn't scan, ask customer to refresh</li>
+                          <li>• For expired codes, direct to customer service</li>
+                          <li>• For wrong event codes, verify event details</li>
+                          <li>• For technical issues, use manual entry</li>
+                        </ul>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+
+            {activeTab === "history" && (
               <CheckInHistory
                 eventId={eventId}
                 businessId={businessId}
               />
-            </TabsContent>
+            )}
 
-            <TabsContent value="settings" className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Scanner Settings */}
+            {activeTab === "settings" && (
+              <div className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* Scanner Settings */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Scanner Settings</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div>
+                        <label className="text-sm font-medium text-gray-700">Camera Quality</label>
+                        <select className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md text-sm">
+                          <option value="high">High Quality</option>
+                          <option value="medium">Medium Quality</option>
+                          <option value="low">Low Quality</option>
+                        </select>
+                      </div>
+                      
+                      <div>
+                        <label className="text-sm font-medium text-gray-700">Auto-scan Interval</label>
+                        <select className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md text-sm">
+                          <option value="1">1 second</option>
+                          <option value="2">2 seconds</option>
+                          <option value="3">3 seconds</option>
+                        </select>
+                      </div>
+
+                      <div className="flex items-center space-x-2">
+                        <input type="checkbox" id="sound" className="rounded" />
+                        <label htmlFor="sound" className="text-sm text-gray-700">Enable sound notifications</label>
+                      </div>
+
+                      <div className="flex items-center space-x-2">
+                        <input type="checkbox" id="vibration" className="rounded" />
+                        <label htmlFor="vibration" className="text-sm text-gray-700">Enable vibration feedback</label>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* Check-in Settings */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Check-in Settings</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div>
+                        <label className="text-sm font-medium text-gray-700">Auto-check-in</label>
+                        <select className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md text-sm">
+                          <option value="manual">Manual confirmation required</option>
+                          <option value="auto">Automatic for valid tickets</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="text-sm font-medium text-gray-700">Check-in Window</label>
+                        <select className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md text-sm">
+                          <option value="1">1 hour before event</option>
+                          <option value="2">2 hours before event</option>
+                          <option value="3">3 hours before event</option>
+                        </select>
+                      </div>
+
+                      <div className="flex items-center space-x-2">
+                        <input type="checkbox" id="location" className="rounded" />
+                        <label htmlFor="location" className="text-sm text-gray-700">Capture location data</label>
+                      </div>
+
+                      <div className="flex items-center space-x-2">
+                        <input type="checkbox" id="offline" className="rounded" />
+                        <label htmlFor="offline" className="text-sm text-gray-700">Enable offline mode</label>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                {/* Export Settings */}
                 <Card>
                   <CardHeader>
-                    <CardTitle>Scanner Settings</CardTitle>
+                    <CardTitle>Data Export</CardTitle>
                   </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div>
-                      <label className="text-sm font-medium text-gray-700">Camera Quality</label>
-                      <select className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md text-sm">
-                        <option value="high">High Quality</option>
-                        <option value="medium">Medium Quality</option>
-                        <option value="low">Low Quality</option>
-                      </select>
-                    </div>
-                    
-                    <div>
-                      <label className="text-sm font-medium text-gray-700">Auto-scan Interval</label>
-                      <select className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md text-sm">
-                        <option value="1">1 second</option>
-                        <option value="2">2 seconds</option>
-                        <option value="3">3 seconds</option>
-                      </select>
-                    </div>
-
-                    <div className="flex items-center space-x-2">
-                      <input type="checkbox" id="sound" className="rounded" />
-                      <label htmlFor="sound" className="text-sm text-gray-700">Enable sound notifications</label>
-                    </div>
-
-                    <div className="flex items-center space-x-2">
-                      <input type="checkbox" id="vibration" className="rounded" />
-                      <label htmlFor="vibration" className="text-sm text-gray-700">Enable vibration feedback</label>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* Check-in Settings */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Check-in Settings</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div>
-                      <label className="text-sm font-medium text-gray-700">Auto-check-in</label>
-                      <select className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md text-sm">
-                        <option value="manual">Manual confirmation required</option>
-                        <option value="auto">Automatic for valid tickets</option>
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="text-sm font-medium text-gray-700">Check-in Window</label>
-                      <select className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md text-sm">
-                        <option value="1">1 hour before event</option>
-                        <option value="2">2 hours before event</option>
-                        <option value="3">3 hours before event</option>
-                      </select>
-                    </div>
-
-                    <div className="flex items-center space-x-2">
-                      <input type="checkbox" id="location" className="rounded" />
-                      <label htmlFor="location" className="text-sm text-gray-700">Capture location data</label>
-                    </div>
-
-                    <div className="flex items-center space-x-2">
-                      <input type="checkbox" id="offline" className="rounded" />
-                      <label htmlFor="offline" className="text-sm text-gray-700">Enable offline mode</label>
+                  <CardContent>
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="font-medium text-gray-900">Export Check-in Data</p>
+                          <p className="text-sm text-gray-600">Download all check-in records as CSV</p>
+                        </div>
+                        <Button variant="outline">
+                          <Download className="w-4 h-4 mr-2" />
+                          Export
+                        </Button>
+                      </div>
+                      
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="font-medium text-gray-900">Backup Scanner Data</p>
+                          <p className="text-sm text-gray-600">Create a backup of all scanner settings and data</p>
+                        </div>
+                        <Button variant="outline">
+                          <Download className="w-4 h-4 mr-2" />
+                          Backup
+                        </Button>
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
               </div>
-
-              {/* Export Settings */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Data Export</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="font-medium text-gray-900">Export Check-in Data</p>
-                        <p className="text-sm text-gray-600">Download all check-in records as CSV</p>
-                      </div>
-                      <Button variant="outline">
-                        <Download className="w-4 h-4 mr-2" />
-                        Export
-                      </Button>
-                    </div>
-                    
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="font-medium text-gray-900">Backup Scanner Data</p>
-                        <p className="text-sm text-gray-600">Create a backup of all scanner settings and data</p>
-                      </div>
-                      <Button variant="outline">
-                        <Download className="w-4 h-4 mr-2" />
-                        Backup
-                      </Button>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
-          </Tabs>
+            )}
+          </div>
         </div>
       </div>
     </AppLayout>
