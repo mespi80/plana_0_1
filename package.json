@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "cleanup": "tsx scripts/cleanup-test-data.ts"
   },
   "dependencies": {
     "@googlemaps/js-api-loader": "^1.16.10",

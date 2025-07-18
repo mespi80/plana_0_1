@@ -1,14 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { BusinessGuard } from "@/components/auth/role-guard";
 import { BusinessDashboardLayout } from "@/components/business/business-dashboard-layout";
 import { EventCreationForm } from "@/components/business/event-creation-form";
+import { VenueCreationForm } from "@/components/business/venue-creation-form";
 import { EventManagement } from "@/components/business/event-management";
 import { EventPreview } from "@/components/business/event-preview";
 import { QRCodeScanner } from "@/components/qr-code/qr-code-scanner";
 import { CheckInHistory } from "@/components/business/check-in-history";
-// AnalyticsDashboard component removed - will be implemented separately
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { 
@@ -16,8 +16,11 @@ import {
   Users, 
   DollarSign, 
   BarChart3,
-  Settings
+  Settings,
+  Building2,
+  Plus
 } from "lucide-react";
+import { supabase } from "@/lib/supabase";
 
 interface BusinessStats {
   totalEvents: number;
@@ -46,24 +49,97 @@ interface EventPreviewData {
   isActive: boolean;
 }
 
+interface Business {
+  id: string;
+  name: string;
+  description: string;
+  business_type: string;
+}
+
 export default function BusinessDashboardPage() {
   const [activeTab, setActiveTab] = useState("overview");
   const [showEventForm, setShowEventForm] = useState(false);
+  const [showVenueForm, setShowVenueForm] = useState(false);
   const [showEventPreview, setShowEventPreview] = useState(false);
   const [previewEventData, setPreviewEventData] = useState<EventPreviewData | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [business, setBusiness] = useState<Business | null>(null);
+  const [businessStats, setBusinessStats] = useState<BusinessStats>({
+    totalEvents: 0,
+    activeEvents: 0,
+    totalRevenue: 0,
+    totalBookings: 0
+  });
 
-  // Mock business stats
-  const businessStats: BusinessStats = {
-    totalEvents: 12,
-    activeEvents: 8,
-    totalRevenue: 15420.50,
-    totalBookings: 342
+  // Load business data
+  useEffect(() => {
+    const loadBusiness = async () => {
+      if (!supabase) return;
+
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session?.user) return;
+
+        const { data: businessData, error } = await supabase
+          .from('businesses')
+          .select('*')
+          .eq('owner_id', session.user.id)
+          .single();
+
+        if (error) {
+          console.error('Error loading business:', error);
+        } else {
+          setBusiness(businessData);
+          await loadBusinessStats(businessData.id);
+        }
+      } catch (error) {
+        console.error('Error loading business:', error);
+      }
+    };
+
+    loadBusiness();
+  }, []);
+
+  const loadBusinessStats = async (businessId: string) => {
+    if (!supabase) return;
+
+    try {
+      // Get events count
+      const { count: totalEvents } = await supabase
+        .from('events')
+        .select('*', { count: 'exact', head: true })
+        .eq('venue.business_id', businessId);
+
+      const { count: activeEvents } = await supabase
+        .from('events')
+        .select('*', { count: 'exact', head: true })
+        .eq('venue.business_id', businessId)
+        .eq('is_active', true);
+
+      // Get bookings count and revenue
+      const { data: bookings } = await supabase
+        .from('bookings')
+        .select('total_amount')
+        .eq('event.venue.business_id', businessId);
+
+      const totalBookings = bookings?.length || 0;
+      const totalRevenue = bookings?.reduce((sum, booking) => sum + booking.total_amount, 0) || 0;
+
+      setBusinessStats({
+        totalEvents: totalEvents || 0,
+        activeEvents: activeEvents || 0,
+        totalRevenue,
+        totalBookings
+      });
+    } catch (error) {
+      console.error('Error loading business stats:', error);
+    }
   };
 
   const handleTabChange = (tab: string) => {
     setActiveTab(tab);
     setShowEventForm(false);
+    setShowVenueForm(false);
     setShowEventPreview(false);
   };
 
@@ -72,28 +148,109 @@ export default function BusinessDashboardPage() {
     setActiveTab("events");
   };
 
+  const handleCreateVenue = () => {
+    setShowVenueForm(true);
+    setActiveTab("venues");
+  };
+
   const handleEventFormSubmit = async (data: any) => {
+    if (!business) return;
+    
     setIsLoading(true);
     
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    try {
+      const response = await fetch('/api/events', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          ...data,
+          venueId: data.venueId
+        }),
+      });
+
+      if (response.ok) {
+        const eventData = await response.json();
+        
+        // Set preview data and show preview
+        setPreviewEventData({
+          id: eventData.id,
+          title: eventData.title,
+          description: eventData.description,
+          category: eventData.category,
+          date: data.date,
+          time: data.time,
+          duration: data.duration,
+          venue: "Selected Venue", // This will be updated with actual venue name
+          address: "Venue Address",
+          city: "City",
+          state: "State",
+          zipCode: "ZIP",
+          price: eventData.price,
+          capacity: eventData.capacity,
+          images: data.images.map((file: File) => URL.createObjectURL(file)),
+          tags: data.tags,
+          isActive: eventData.is_active
+        });
+        
+        setShowEventForm(false);
+        setShowEventPreview(true);
+        
+        // Refresh stats
+        await loadBusinessStats(business.id);
+      } else {
+        const errorData = await response.json();
+        console.error('Error creating event:', errorData);
+        alert('Failed to create event: ' + errorData.error);
+      }
+    } catch (error) {
+      console.error('Error creating event:', error);
+      alert('Failed to create event');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleVenueFormSubmit = async (data: any) => {
+    if (!business) return;
     
-    console.log("Creating event:", data);
+    setIsLoading(true);
     
-    // Set preview data and show preview
-    setPreviewEventData({
-      id: "new_event",
-      ...data,
-      images: data.images.map((file: File) => URL.createObjectURL(file))
-    });
-    
-    setShowEventForm(false);
-    setShowEventPreview(true);
-    setIsLoading(false);
+    try {
+      const response = await fetch('/api/venues', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          ...data,
+          businessId: business.id
+        }),
+      });
+
+      if (response.ok) {
+        setShowVenueForm(false);
+        alert('Venue created successfully!');
+      } else {
+        const errorData = await response.json();
+        console.error('Error creating venue:', errorData);
+        alert('Failed to create venue: ' + errorData.error);
+      }
+    } catch (error) {
+      console.error('Error creating venue:', error);
+      alert('Failed to create venue');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleEventFormCancel = () => {
     setShowEventForm(false);
+  };
+
+  const handleVenueFormCancel = () => {
+    setShowVenueForm(false);
   };
 
   const handleEditEvent = (eventId: string) => {
@@ -104,12 +261,54 @@ export default function BusinessDashboardPage() {
     console.log("Viewing event:", eventId);
   };
 
-  const handleDeleteEvent = (eventId: string) => {
-    console.log("Deleting event:", eventId);
+  const handleDeleteEvent = async (eventId: string) => {
+    if (!confirm('Are you sure you want to delete this event?')) return;
+    
+    try {
+      const response = await fetch(`/api/events/${eventId}`, {
+        method: 'DELETE',
+      });
+
+      if (response.ok) {
+        alert('Event deleted successfully!');
+        if (business) {
+          await loadBusinessStats(business.id);
+        }
+      } else {
+        const errorData = await response.json();
+        alert('Failed to delete event: ' + errorData.error);
+      }
+    } catch (error) {
+      console.error('Error deleting event:', error);
+      alert('Failed to delete event');
+    }
   };
 
-  const handleToggleEventStatus = (eventId: string, status: string) => {
-    console.log("Toggling event status:", eventId, status);
+  const handleToggleEventStatus = async (eventId: string, status: string) => {
+    try {
+      const response = await fetch(`/api/events/${eventId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          isActive: status === 'active'
+        }),
+      });
+
+      if (response.ok) {
+        alert('Event status updated successfully!');
+        if (business) {
+          await loadBusinessStats(business.id);
+        }
+      } else {
+        const errorData = await response.json();
+        alert('Failed to update event status: ' + errorData.error);
+      }
+    } catch (error) {
+      console.error('Error updating event status:', error);
+      alert('Failed to update event status');
+    }
   };
 
   const handlePreviewClose = () => {
@@ -147,14 +346,14 @@ export default function BusinessDashboardPage() {
               <span>Create New Event</span>
             </Button>
             
-            <Button variant="outline" className="h-20 flex flex-col items-center justify-center">
-              <BarChart3 className="w-6 h-6 mb-2" />
-              <span>View Analytics</span>
+            <Button onClick={handleCreateVenue} className="h-20 flex flex-col items-center justify-center">
+              <Building2 className="w-6 h-6 mb-2" />
+              <span>Create New Venue</span>
             </Button>
             
             <Button variant="outline" className="h-20 flex flex-col items-center justify-center">
-              <Settings className="w-6 h-6 mb-2" />
-              <span>Business Settings</span>
+              <BarChart3 className="w-6 h-6 mb-2" />
+              <span>View Analytics</span>
             </Button>
           </div>
         </CardContent>
@@ -212,6 +411,7 @@ export default function BusinessDashboardPage() {
           onSubmit={handleEventFormSubmit}
           onCancel={handleEventFormCancel}
           isLoading={isLoading}
+          businessId={business?.id}
         />
       ) : (
         <EventManagement
@@ -220,7 +420,49 @@ export default function BusinessDashboardPage() {
           onDeleteEvent={handleDeleteEvent}
           onToggleStatus={handleToggleEventStatus}
           onCreateEvent={handleCreateEvent}
+          businessId={business?.id}
         />
+      )}
+    </div>
+  );
+
+  const renderVenuesContent = () => (
+    <div className="p-6">
+      {showVenueForm ? (
+        <VenueCreationForm
+          onSubmit={handleVenueFormSubmit}
+          onCancel={handleVenueFormCancel}
+          isLoading={isLoading}
+        />
+      ) : (
+        <div className="space-y-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-2xl font-bold text-gray-900">Venue Management</h2>
+              <p className="text-gray-600">Manage your venues and locations</p>
+            </div>
+            <Button onClick={handleCreateVenue}>
+              <Plus className="w-4 h-4 mr-2" />
+              Create Venue
+            </Button>
+          </div>
+          
+          <Card>
+            <CardContent className="p-6">
+              <div className="text-center">
+                <Building2 className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-gray-900 mb-2">No Venues Yet</h3>
+                <p className="text-gray-600 mb-4">
+                  Create your first venue to start hosting events
+                </p>
+                <Button onClick={handleCreateVenue}>
+                  <Plus className="w-4 h-4 mr-2" />
+                  Create Your First Venue
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       )}
     </div>
   );
@@ -235,7 +477,7 @@ export default function BusinessDashboardPage() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div>
           <QRCodeScanner
-            businessId="business_demo_123"
+            businessId={business?.id || "business_demo_123"}
             eventId="event_demo_456"
             onCheckIn={(checkInData) => console.log("Check-in:", checkInData)}
             onError={(error) => console.error("Scanner error:", error)}
@@ -245,7 +487,7 @@ export default function BusinessDashboardPage() {
         <div>
           <CheckInHistory
             eventId="event_demo_456"
-            businessId="business_demo_123"
+            businessId={business?.id || "business_demo_123"}
           />
         </div>
       </div>
@@ -300,6 +542,8 @@ export default function BusinessDashboardPage() {
         return renderOverviewContent();
       case "events":
         return renderEventsContent();
+      case "venues":
+        return renderVenuesContent();
       case "scanner":
         return renderScannerContent();
       case "analytics":

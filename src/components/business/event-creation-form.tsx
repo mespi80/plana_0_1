@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { 
   Calendar, 
   Clock, 
@@ -18,6 +18,14 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
+import { supabase } from "@/lib/supabase";
+
+interface Venue {
+  id: string;
+  name: string;
+  address: string;
+  category: string;
+}
 
 interface EventFormData {
   title: string;
@@ -26,11 +34,7 @@ interface EventFormData {
   date: string;
   time: string;
   duration: string;
-  venue: string;
-  address: string;
-  city: string;
-  state: string;
-  zipCode: string;
+  venueId: string;
   price: number;
   capacity: number;
   images: File[];
@@ -42,6 +46,7 @@ interface EventCreationFormProps {
   onSubmit: (data: EventFormData) => void;
   onCancel: () => void;
   isLoading?: boolean;
+  businessId?: string;
 }
 
 const eventCategories = [
@@ -61,7 +66,8 @@ const eventCategories = [
 export function EventCreationForm({
   onSubmit,
   onCancel,
-  isLoading = false
+  isLoading = false,
+  businessId
 }: EventCreationFormProps) {
   const [formData, setFormData] = useState<EventFormData>({
     title: "",
@@ -70,11 +76,7 @@ export function EventCreationForm({
     date: "",
     time: "",
     duration: "2",
-    venue: "",
-    address: "",
-    city: "",
-    state: "",
-    zipCode: "",
+    venueId: "",
     price: 0,
     capacity: 50,
     images: [],
@@ -82,8 +84,37 @@ export function EventCreationForm({
     isActive: true
   });
 
+  const [venues, setVenues] = useState<Venue[]>([]);
   const [newTag, setNewTag] = useState("");
   const [imagePreview, setImagePreview] = useState<string[]>([]);
+  const [isLoadingVenues, setIsLoadingVenues] = useState(false);
+
+  // Load venues for the business
+  useEffect(() => {
+    const loadVenues = async () => {
+      if (!businessId || !supabase) return;
+      
+      setIsLoadingVenues(true);
+      try {
+        const { data, error } = await supabase
+          .from('venues')
+          .select('id, name, address, category')
+          .eq('business_id', businessId);
+
+        if (error) {
+          console.error('Error loading venues:', error);
+        } else {
+          setVenues(data || []);
+        }
+      } catch (error) {
+        console.error('Error loading venues:', error);
+      } finally {
+        setIsLoadingVenues(false);
+      }
+    };
+
+    loadVenues();
+  }, [businessId]);
 
   const handleInputChange = (field: keyof EventFormData, value: any) => {
     setFormData(prev => ({
@@ -273,72 +304,42 @@ export function EventCreationForm({
         </CardContent>
       </Card>
 
-      {/* Location */}
+      {/* Venue Selection */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center space-x-2">
             <MapPin className="w-5 h-5" />
-            <span>Location</span>
+            <span>Venue</span>
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor="venue">Venue Name *</Label>
-              <Input
+          <div>
+            <Label htmlFor="venue">Select Venue *</Label>
+            {isLoadingVenues ? (
+              <div className="flex items-center space-x-2 text-gray-600">
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-purple-600"></div>
+                <span>Loading venues...</span>
+              </div>
+            ) : venues.length === 0 ? (
+              <div className="text-center py-4 text-gray-600">
+                <p>No venues found. Please create a venue first.</p>
+              </div>
+            ) : (
+              <select
                 id="venue"
-                value={formData.venue}
-                onChange={(e) => handleInputChange("venue", e.target.value)}
-                placeholder="Enter venue name"
+                value={formData.venueId}
+                onChange={(e) => handleInputChange("venueId", e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
                 required
-              />
-            </div>
-            
-            <div>
-              <Label htmlFor="address">Street Address *</Label>
-              <Input
-                id="address"
-                value={formData.address}
-                onChange={(e) => handleInputChange("address", e.target.value)}
-                placeholder="Enter street address"
-                required
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <Label htmlFor="city">City *</Label>
-              <Input
-                id="city"
-                value={formData.city}
-                onChange={(e) => handleInputChange("city", e.target.value)}
-                placeholder="Enter city"
-                required
-              />
-            </div>
-            
-            <div>
-              <Label htmlFor="state">State *</Label>
-              <Input
-                id="state"
-                value={formData.state}
-                onChange={(e) => handleInputChange("state", e.target.value)}
-                placeholder="Enter state"
-                required
-              />
-            </div>
-            
-            <div>
-              <Label htmlFor="zipCode">ZIP Code *</Label>
-              <Input
-                id="zipCode"
-                value={formData.zipCode}
-                onChange={(e) => handleInputChange("zipCode", e.target.value)}
-                placeholder="Enter ZIP code"
-                required
-              />
-            </div>
+              >
+                <option value="">Select a venue</option>
+                {venues.map(venue => (
+                  <option key={venue.id} value={venue.id}>
+                    {venue.name} - {venue.address}
+                  </option>
+                ))}
+              </select>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -392,24 +393,16 @@ export function EventCreationForm({
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
-            <Upload className="w-8 h-8 text-gray-400 mx-auto mb-2" />
-            <p className="text-sm text-gray-600 mb-2">
-              Upload images to showcase your event
-            </p>
-            <input
+          <div>
+            <Label htmlFor="images">Upload Images</Label>
+            <Input
+              id="images"
               type="file"
               multiple
               accept="image/*"
               onChange={handleImageUpload}
-              className="hidden"
-              id="image-upload"
+              className="cursor-pointer"
             />
-            <label htmlFor="image-upload">
-              <Button type="button" variant="outline" className="cursor-pointer">
-                Choose Images
-              </Button>
-            </label>
           </div>
 
           {imagePreview.length > 0 && (
@@ -435,7 +428,7 @@ export function EventCreationForm({
         </CardContent>
       </Card>
 
-      {/* Form Actions */}
+      {/* Submit Buttons */}
       <div className="flex justify-end space-x-4">
         <Button
           type="button"
@@ -447,9 +440,9 @@ export function EventCreationForm({
         </Button>
         <Button
           type="submit"
-          disabled={isLoading}
+          disabled={isLoading || venues.length === 0}
         >
-          {isLoading ? "Creating Event..." : "Create Event"}
+          {isLoading ? "Creating..." : "Create Event"}
         </Button>
       </div>
     </form>

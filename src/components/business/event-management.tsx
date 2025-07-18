@@ -20,6 +20,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { supabase } from "@/lib/supabase";
 
 interface BusinessEvent {
   id: string;
@@ -46,6 +47,7 @@ interface EventManagementProps {
   onDeleteEvent: (eventId: string) => void;
   onToggleStatus: (eventId: string, status: string) => void;
   onCreateEvent: () => void;
+  businessId?: string;
 }
 
 export function EventManagement({
@@ -53,7 +55,8 @@ export function EventManagement({
   onViewEvent,
   onDeleteEvent,
   onToggleStatus,
-  onCreateEvent
+  onCreateEvent,
+  businessId
 }: EventManagementProps) {
   const [events, setEvents] = useState<BusinessEvent[]>([]);
   const [filteredEvents, setFilteredEvents] = useState<BusinessEvent[]>([]);
@@ -62,87 +65,59 @@ export function EventManagement({
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [isLoading, setIsLoading] = useState(true);
 
-  // Mock data - in a real app, this would come from an API
+  // Load events from database
   useEffect(() => {
-    const mockEvents: BusinessEvent[] = [
-      {
-        id: "event_1",
-        title: "Jazz Night at Blue Note",
-        description: "An evening of live jazz music featuring local artists",
-        category: "Music",
-        date: "2024-01-15",
-        time: "20:00",
-        venue: "Blue Note Jazz Club",
-        address: "131 W 3rd St, New York, NY 10012",
-        price: 50.00,
-        capacity: 100,
-        bookedCount: 75,
-        revenue: 3750.00,
-        status: "active",
-        imageUrl: "/api/placeholder/300/200",
-        tags: ["jazz", "live music", "nightlife"],
-        createdAt: "2024-01-01T10:00:00Z"
-      },
-      {
-        id: "event_2",
-        title: "Comedy Show at Laugh Factory",
-        description: "Stand-up comedy night with top comedians",
-        category: "Comedy",
-        date: "2024-01-20",
-        time: "19:30",
-        venue: "Laugh Factory",
-        address: "303 W 42nd St, New York, NY 10036",
-        price: 35.00,
-        capacity: 150,
-        bookedCount: 120,
-        revenue: 4200.00,
-        status: "active",
-        imageUrl: "/api/placeholder/300/200",
-        tags: ["comedy", "stand-up", "entertainment"],
-        createdAt: "2024-01-02T14:30:00Z"
-      },
-      {
-        id: "event_3",
-        title: "Art Gallery Opening",
-        description: "Opening night for contemporary art exhibition",
-        category: "Art & Culture",
-        date: "2024-01-25",
-        time: "18:00",
-        venue: "Modern Art Museum",
-        address: "11 W 53rd St, New York, NY 10019",
-        price: 25.00,
-        capacity: 200,
-        bookedCount: 50,
-        revenue: 1250.00,
-        status: "inactive",
-        imageUrl: "/api/placeholder/300/200",
-        tags: ["art", "exhibition", "culture"],
-        createdAt: "2024-01-03T09:15:00Z"
-      },
-      {
-        id: "event_4",
-        title: "Tech Startup Meetup",
-        description: "Networking event for tech entrepreneurs",
-        category: "Technology",
-        date: "2024-02-01",
-        time: "19:00",
-        venue: "WeWork",
-        address: "205 E 42nd St, New York, NY 10017",
-        price: 0.00,
-        capacity: 80,
-        bookedCount: 65,
-        revenue: 0.00,
-        status: "draft",
-        imageUrl: "/api/placeholder/300/200",
-        tags: ["tech", "networking", "startup"],
-        createdAt: "2024-01-04T16:45:00Z"
+    const loadEvents = async () => {
+      if (!businessId || !supabase) {
+        setIsLoading(false);
+        return;
       }
-    ];
 
-    setEvents(mockEvents);
-    setFilteredEvents(mockEvents);
-    setIsLoading(false);
-  }, []);
+      try {
+        const { data, error } = await supabase
+          .from('events')
+          .select(`
+            *,
+            venue:venues(*)
+          `)
+          .eq('venue.business_id', businessId);
+
+        if (error) {
+          console.error('Error loading events:', error);
+          setEvents([]);
+        } else {
+          // Transform database events to BusinessEvent format
+          const transformedEvents: BusinessEvent[] = (data || []).map(event => ({
+            id: event.id,
+            title: event.title,
+            description: event.description || '',
+            category: event.category,
+            date: new Date(event.start_time).toISOString().split('T')[0],
+            time: new Date(event.start_time).toTimeString().slice(0, 5),
+            venue: event.venue?.name || 'Unknown Venue',
+            address: event.venue?.address || 'Unknown Address',
+            price: event.price || 0,
+            capacity: event.capacity,
+            bookedCount: event.capacity - event.available_tickets,
+            revenue: 0, // This would need to be calculated from bookings
+            status: event.is_active ? 'active' : 'inactive',
+            imageUrl: "/api/placeholder/300/200",
+            tags: [],
+            createdAt: event.created_at
+          }));
+          
+          setEvents(transformedEvents);
+        }
+      } catch (error) {
+        console.error('Error loading events:', error);
+        setEvents([]);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadEvents();
+  }, [businessId]);
 
   // Filter events based on search and filters
   useEffect(() => {

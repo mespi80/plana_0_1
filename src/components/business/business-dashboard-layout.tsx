@@ -42,6 +42,12 @@ const dashboardTabs = [
     description: "Manage your events and bookings"
   },
   {
+    id: "venues",
+    label: "Venues",
+    icon: Building2,
+    description: "Manage your venues and locations"
+  },
+  {
     id: "scanner",
     label: "QR Scanner",
     icon: QrCode,
