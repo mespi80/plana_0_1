@@ -1,112 +1,98 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { MapPin } from "lucide-react";
 import { AppLayout } from "@/components/layout/app-layout";
 import { GoogleMaps } from "@/components/maps/google-maps";
 import { EventSearch } from "@/components/search/event-search";
 import { EventDetailModal } from "@/components/events/event-detail-modal";
-
-// Mock event data
-const mockEvents = [
-  {
-    id: "1",
-    title: "Jazz Night at Blue Note",
-    price: 25,
-    location: { lat: 40.7308, lng: -74.0027 },
-    venue: "Blue Note Jazz Club",
-    startTime: "Tonight, 8:00 PM",
-    endTime: "11:00 PM",
-    category: "Music",
-    description: "Experience the best jazz music in NYC with live performances from top artists.",
-    availableTickets: 15
-  },
-  {
-    id: "2",
-    title: "Comedy Show at Laugh Factory",
-    price: 18,
-    location: { lat: 40.7589, lng: -73.9851 },
-    venue: "Laugh Factory",
-    startTime: "Tonight, 7:30 PM",
-    endTime: "9:30 PM",
-    category: "Comedy",
-    description: "Laugh your night away with the city's funniest comedians.",
-    availableTickets: 8
-  },
-  {
-    id: "3",
-    title: "Art Gallery Opening",
-    price: 12,
-    location: { lat: 40.7505, lng: -73.9934 },
-    venue: "Modern Art Museum",
-    startTime: "Tonight, 6:00 PM",
-    endTime: "9:00 PM",
-    category: "Art & Culture",
-    description: "Discover new contemporary artists and their latest works.",
-    availableTickets: 25
-  },
-  {
-    id: "4",
-    title: "Food & Wine Festival",
-    price: 45,
-    location: { lat: 40.7614, lng: -73.9776 },
-    venue: "Central Park",
-    startTime: "Tomorrow, 2:00 PM",
-    endTime: "8:00 PM",
-    category: "Food & Drink",
-    description: "Taste the best food and wine from local restaurants and wineries.",
-    availableTickets: 50
-  },
-  {
-    id: "5",
-    title: "Yoga in the Park",
-    price: 10,
-    location: { lat: 40.7829, lng: -73.9654 },
-    venue: "Bryant Park",
-    startTime: "Tomorrow, 9:00 AM",
-    endTime: "10:30 AM",
-    category: "Outdoor",
-    description: "Start your day with a refreshing yoga session in the heart of the city.",
-    availableTickets: 30
-  },
-  {
-    id: "6",
-    title: "Rock Concert",
-    price: 35,
-    location: { lat: 40.7569, lng: -73.8455 },
-    venue: "Forest Hills Stadium",
-    startTime: "Friday, 7:00 PM",
-    endTime: "11:00 PM",
-    category: "Music",
-    description: "Rock out with the hottest bands in town.",
-    availableTickets: 12
-  },
-  {
-    id: "7",
-    title: "Cooking Workshop",
-    price: 28,
-    location: { lat: 40.7421, lng: -73.9911 },
-    venue: "Culinary Institute",
-    startTime: "Saturday, 3:00 PM",
-    endTime: "6:00 PM",
-    category: "Workshop",
-    description: "Learn to cook authentic Italian cuisine from expert chefs.",
-    availableTickets: 20
-  }
-];
+import { supabase } from "@/lib/supabase";
+import { Event } from "@/types/event";
 
 export default function HomePage() {
-  const [selectedEvent, setSelectedEvent] = useState<any>(null);
+  const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [filteredEvents, setFilteredEvents] = useState(mockEvents);
+  const [events, setEvents] = useState<Event[]>([]);
+  const [filteredEvents, setFilteredEvents] = useState<Event[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const handleEventClick = useCallback((event: any) => {
+  // Fetch real events from database
+  useEffect(() => {
+    const loadEvents = async () => {
+      if (!supabase) {
+        console.error('Supabase client not available');
+        setIsLoading(false);
+        return;
+      }
+
+      try {
+        // Get upcoming active events with venue information
+        const { data, error } = await supabase
+          .from('events')
+          .select(`
+            *,
+            venue:venues(*)
+          `)
+          .eq('is_active', true)
+          .gte('start_time', new Date().toISOString())
+          .order('start_time', { ascending: true });
+
+        if (error) {
+          console.error('Error loading events:', error);
+          setEvents([]);
+        } else {
+          // Transform database events to the format expected by the map
+          const transformedEvents: Event[] = (data || []).map(event => ({
+            id: event.id,
+            title: event.title,
+            price: event.price || 0,
+            location: {
+              lat: event.venue?.lat || 0,
+              lng: event.venue?.lng || 0
+            },
+            venue: event.venue?.name || 'Unknown Venue',
+            startTime: new Date(event.start_time).toLocaleString('en-US', {
+              weekday: 'short',
+              month: 'short',
+              day: 'numeric',
+              hour: 'numeric',
+              minute: '2-digit',
+              hour12: true
+            }),
+            endTime: new Date(event.end_time).toLocaleString('en-US', {
+              hour: 'numeric',
+              minute: '2-digit',
+              hour12: true
+            }),
+            category: event.category,
+            description: event.description || '',
+            availableTickets: event.available_tickets,
+            capacity: event.capacity,
+            image: event.venue?.images?.[0] || undefined
+          }));
+
+          setEvents(transformedEvents);
+          setFilteredEvents(transformedEvents);
+        }
+      } catch (error) {
+        console.error('Error loading events:', error);
+        setEvents([]);
+        setFilteredEvents([]);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadEvents();
+  }, []);
+
+  const handleEventClick = useCallback((event: Event) => {
     setSelectedEvent(event);
     setIsModalOpen(true);
   }, []);
 
   const handleSearch = useCallback((filters: any) => {
-    let filtered = mockEvents;
+    let filtered = events;
 
     // Filter by query
     if (filters.query) {
@@ -139,7 +125,7 @@ export default function HomePage() {
     }
 
     setFilteredEvents(filtered);
-  }, []);
+  }, [events]);
 
   const handleLocationRequest = useCallback(() => {
     if (navigator.geolocation) {
@@ -155,16 +141,29 @@ export default function HomePage() {
     }
   }, []);
 
-  const handleBookEvent = useCallback((event: any) => {
+  const handleBookEvent = useCallback((event: Event) => {
     console.log("Booking event:", event);
     // In a real app, this would navigate to booking page
     setIsModalOpen(false);
   }, []);
 
-  const handleFavoriteEvent = useCallback((event: any) => {
+  const handleFavoriteEvent = useCallback((event: Event) => {
     console.log("Favorited event:", event);
     // In a real app, this would save to favorites
   }, []);
+
+  if (isLoading) {
+    return (
+      <AppLayout>
+        <div className="flex items-center justify-center h-screen">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600 mx-auto mb-4"></div>
+            <p className="text-gray-600">Loading events...</p>
+          </div>
+        </div>
+      </AppLayout>
+    );
+  }
 
   return (
     <AppLayout>
@@ -186,13 +185,28 @@ export default function HomePage() {
 
       {/* Map Container */}
       <div className="h-[calc(100vh-200px)] relative bg-gray-100">
-        <GoogleMaps
-          events={filteredEvents}
-          onEventClick={handleEventClick}
-          onMapClick={(lat, lng) => {
-            console.log("Map clicked at:", lat, lng);
-          }}
-        />
+        {filteredEvents.length === 0 ? (
+          <div className="flex items-center justify-center h-full">
+            <div className="text-center">
+              <MapPin className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-gray-900 mb-2">No Events Found</h3>
+              <p className="text-gray-600">
+                {events.length === 0 
+                  ? "No upcoming events available at the moment."
+                  : "Try adjusting your search filters."
+                }
+              </p>
+            </div>
+          </div>
+        ) : (
+          <GoogleMaps
+            events={filteredEvents}
+            onEventClick={handleEventClick}
+            onMapClick={(lat, lng) => {
+              console.log("Map clicked at:", lat, lng);
+            }}
+          />
+        )}
       </div>
 
       {/* Event Detail Modal */}
