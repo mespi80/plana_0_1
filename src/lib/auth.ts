@@ -228,4 +228,80 @@ export class AuthService {
   static canAccessAdmin(user: UserProfile | null): boolean {
     return this.hasRole(user, 'admin');
   }
+
+  /**
+   * Get all users (admin only)
+   */
+  static async getAllUsers(): Promise<{ users: UserProfile[] | null; error: string | null }> {
+    if (!supabase) {
+      return { users: null, error: 'Supabase is not configured. Please set environment variables.' };
+    }
+
+    try {
+      const { data: users, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        return { users: null, error: error.message };
+      }
+
+      return { users: users as UserProfile[], error: null };
+    } catch (error) {
+      return { users: null, error: 'An unexpected error occurred' };
+    }
+  }
+
+  /**
+   * Update user role (admin only)
+   */
+  static async updateUserRole(userId: string, newRole: 'user' | 'business' | 'admin'): Promise<{ error: string | null }> {
+    if (!supabase) {
+      return { error: 'Supabase is not configured. Please set environment variables.' };
+    }
+
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ role: newRole })
+        .eq('id', userId);
+
+      if (error) {
+        return { error: error.message };
+      }
+
+      return { error: null };
+    } catch (error) {
+      return { error: 'An unexpected error occurred' };
+    }
+  }
+
+  /**
+   * Delete user (admin only)
+   */
+  static async deleteUser(userId: string): Promise<{ error: string | null }> {
+    if (!supabase) {
+      return { error: 'Supabase is not configured. Please set environment variables.' };
+    }
+
+    try {
+      // Delete user profile
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .delete()
+        .eq('id', userId);
+
+      if (profileError) {
+        return { error: profileError.message };
+      }
+
+      // Note: We don't delete the auth user here as it requires admin privileges
+      // The auth user will be cleaned up by Supabase policies or manual admin action
+
+      return { error: null };
+    } catch (error) {
+      return { error: 'An unexpected error occurred' };
+    }
+  }
 } 

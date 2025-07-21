@@ -23,16 +23,16 @@ import {
   AlertTriangle,
   CheckCircle
 } from "lucide-react";
-import { User, UserRole } from "@/types/auth";
-import { AuthService } from "@/lib/auth";
+import { UserRole } from "@/types/auth";
+import { AuthService, UserProfile } from "@/lib/auth";
 
 export default function AdminDashboardPage() {
-  const [users, setUsers] = useState<User[]>([]);
-  const [filteredUsers, setFilteredUsers] = useState<User[]>([]);
+  const [users, setUsers] = useState<UserProfile[]>([]);
+  const [filteredUsers, setFilteredUsers] = useState<UserProfile[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [roleFilter, setRoleFilter] = useState<UserRole | "all">("all");
-  const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [editingUser, setEditingUser] = useState<UserProfile | null>(null);
   const [isUpdating, setIsUpdating] = useState(false);
 
   // Load users on component mount
