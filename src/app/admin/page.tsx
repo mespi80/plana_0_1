@@ -61,16 +61,17 @@ export default function AdminDashboardPage() {
   const loadUsers = async () => {
     setIsLoading(true);
     try {
-      const { users: fetchedUsers, error } = await AuthService.getAllUsers();
-      
-      if (error) {
-        console.error('Error loading users:', error);
-        return;
+      const res = await fetch("/api/auth/admin-users");
+      const json = await res.json();
+      if (json.error) {
+        console.error('Error loading users:', json.error);
+        setUsers([]);
+      } else {
+        setUsers(json.users || []);
       }
-
-      setUsers(fetchedUsers || []);
     } catch (error) {
       console.error('Error loading users:', error);
+      setUsers([]);
     } finally {
       setIsLoading(false);
     }
