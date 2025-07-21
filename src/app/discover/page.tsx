@@ -1,114 +1,89 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { Heart, MapPin, ArrowLeft } from "lucide-react";
 import { AppLayout } from "@/components/layout/app-layout";
 import { SwipeableCardStack } from "@/components/events/swipeable-card-stack";
 import { EventDetailModal } from "@/components/events/event-detail-modal";
 import { Event } from "@/types/event";
+import { supabase } from "@/lib/supabase";
 import Link from "next/link";
-
-// Mock event data for discovery
-const mockEvents = [
-  {
-    id: "1",
-    title: "Jazz Night at Blue Note",
-    price: 25,
-    location: { lat: 40.7308, lng: -74.0027 },
-    venue: "Blue Note Jazz Club",
-    startTime: "Tonight, 8:00 PM",
-    endTime: "11:00 PM",
-    category: "Music",
-    description: "Experience the best jazz music in NYC with live performances from top artists. Perfect for a romantic evening or night out with friends.",
-    availableTickets: 15,
-    image: "https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=400&h=300&fit=crop"
-  },
-  {
-    id: "2",
-    title: "Comedy Show at Laugh Factory",
-    price: 18,
-    location: { lat: 40.7589, lng: -73.9851 },
-    venue: "Laugh Factory",
-    startTime: "Tonight, 7:30 PM",
-    endTime: "9:30 PM",
-    category: "Comedy",
-    description: "Laugh your night away with the city's funniest comedians. A perfect way to unwind and have a great time with friends.",
-    availableTickets: 8,
-    image: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=300&fit=crop"
-  },
-  {
-    id: "3",
-    title: "Art Gallery Opening",
-    price: 12,
-    location: { lat: 40.7505, lng: -73.9934 },
-    venue: "Modern Art Museum",
-    startTime: "Tonight, 6:00 PM",
-    endTime: "9:00 PM",
-    category: "Art & Culture",
-    description: "Discover new contemporary artists and their latest works. Wine and cheese reception included. A sophisticated evening for art lovers.",
-    availableTickets: 25,
-    image: "https://images.unsplash.com/photo-1541961017774-22349e4a1262?w=400&h=300&fit=crop"
-  },
-  {
-    id: "4",
-    title: "Food & Wine Festival",
-    price: 45,
-    location: { lat: 40.7614, lng: -73.9776 },
-    venue: "Central Park",
-    startTime: "Tomorrow, 2:00 PM",
-    endTime: "8:00 PM",
-    category: "Food & Drink",
-    description: "Taste the best food and wine from local restaurants and wineries. Live music, cooking demonstrations, and exclusive tastings.",
-    availableTickets: 50,
-    image: "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=400&h=300&fit=crop"
-  },
-  {
-    id: "5",
-    title: "Yoga in the Park",
-    price: 10,
-    location: { lat: 40.7829, lng: -73.9654 },
-    venue: "Bryant Park",
-    startTime: "Tomorrow, 9:00 AM",
-    endTime: "10:30 AM",
-    category: "Outdoor",
-    description: "Start your day with a refreshing yoga session in the heart of the city. All levels welcome. Bring your own mat.",
-    availableTickets: 30,
-    image: "https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?w=400&h=300&fit=crop"
-  },
-  {
-    id: "6",
-    title: "Rock Concert",
-    price: 35,
-    location: { lat: 40.7569, lng: -73.8455 },
-    venue: "Forest Hills Stadium",
-    startTime: "Friday, 7:00 PM",
-    endTime: "11:00 PM",
-    category: "Music",
-    description: "Rock out with the hottest bands in town. Outdoor venue with amazing acoustics. Food and drinks available.",
-    availableTickets: 12,
-    image: "https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=400&h=300&fit=crop"
-  },
-  {
-    id: "7",
-    title: "Cooking Workshop",
-    price: 28,
-    location: { lat: 40.7421, lng: -73.9911 },
-    venue: "Culinary Institute",
-    startTime: "Saturday, 3:00 PM",
-    endTime: "6:00 PM",
-    category: "Workshop",
-    description: "Learn to cook authentic Italian cuisine from expert chefs. Take home your creations and recipes. Wine pairing included.",
-    availableTickets: 20,
-    image: "https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=400&h=300&fit=crop"
-  }
-];
 
 export default function DiscoverPage() {
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [likedEvents, setLikedEvents] = useState<Event[]>([]);
   const [passedEvents, setPassedEvents] = useState<Event[]>([]);
-  const [currentEvents, setCurrentEvents] = useState<Event[]>(mockEvents);
+  const [currentEvents, setCurrentEvents] = useState<Event[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Fetch real events from database
+  useEffect(() => {
+    const loadEvents = async () => {
+      if (!supabase) {
+        console.error('Supabase client not available');
+        setIsLoading(false);
+        return;
+      }
+
+      try {
+        // Get upcoming active events with venue information
+        const { data, error } = await supabase
+          .from('events')
+          .select(`
+            *,
+            venue:venues(*)
+          `)
+          .eq('is_active', true)
+          .gte('start_time', new Date().toISOString())
+          .order('start_time', { ascending: true });
+
+        if (error) {
+          console.error('Error loading events:', error);
+          setCurrentEvents([]);
+        } else {
+          // Transform database events to the format expected by the swipeable cards
+          const transformedEvents: Event[] = (data || []).map(event => ({
+            id: event.id,
+            title: event.title,
+            price: event.price || 0,
+            location: {
+              lat: event.venue?.lat || 0,
+              lng: event.venue?.lng || 0
+            },
+            venue: event.venue?.name || 'Unknown Venue',
+            startTime: new Date(event.start_time).toLocaleString('en-US', {
+              weekday: 'short',
+              month: 'short',
+              day: 'numeric',
+              hour: 'numeric',
+              minute: '2-digit',
+              hour12: true
+            }),
+            endTime: new Date(event.end_time).toLocaleString('en-US', {
+              hour: 'numeric',
+              minute: '2-digit',
+              hour12: true
+            }),
+            category: event.category,
+            description: event.description || '',
+            availableTickets: event.available_tickets,
+            capacity: event.capacity,
+            image: event.venue?.images?.[0] || "https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=400&h=300&fit=crop"
+          }));
+
+          setCurrentEvents(transformedEvents);
+        }
+      } catch (error) {
+        console.error('Error loading events:', error);
+        setCurrentEvents([]);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadEvents();
+  }, []);
 
   const handleLike = useCallback((event: Event) => {
     console.log("Liked event:", event);
@@ -141,6 +116,19 @@ export default function DiscoverPage() {
     // In a real app, this would save to favorites
   }, []);
 
+  if (isLoading) {
+    return (
+      <AppLayout>
+        <div className="flex items-center justify-center h-screen">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600 mx-auto mb-4"></div>
+            <p className="text-gray-600">Loading events...</p>
+          </div>
+        </div>
+      </AppLayout>
+    );
+  }
+
   return (
     <AppLayout>
       {/* Header */}
@@ -164,38 +152,57 @@ export default function DiscoverPage() {
       {/* Content */}
       <div className="flex-1 p-4 bg-gray-50">
         <div className="max-w-md mx-auto">
-          {/* Instructions */}
-          <div className="text-center mb-6">
-            <p className="text-gray-600 mb-2">
-              Swipe right to like, left to pass
-            </p>
-            <p className="text-sm text-gray-500">
-              {currentEvents.length} events remaining
-            </p>
-          </div>
-
-          {/* Card Stack */}
-          <SwipeableCardStack
-            events={currentEvents}
-            onLike={handleLike}
-            onPass={handlePass}
-            onBook={handleBook}
-            onEmpty={handleEmpty}
-          />
-
-          {/* Stats */}
-          <div className="mt-8 text-center">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="bg-white rounded-lg p-4 shadow-sm">
-                <div className="text-2xl font-bold text-red-500">{likedEvents.length}</div>
-                <div className="text-sm text-gray-600">Liked</div>
-              </div>
-              <div className="bg-white rounded-lg p-4 shadow-sm">
-                <div className="text-2xl font-bold text-gray-500">{passedEvents.length}</div>
-                <div className="text-sm text-gray-600">Passed</div>
-              </div>
+          {currentEvents.length === 0 ? (
+            <div className="text-center py-12">
+              <Heart className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-gray-900 mb-2">No Events Available</h3>
+              <p className="text-gray-600 mb-6">
+                There are no upcoming events to discover at the moment.
+              </p>
+              <Link 
+                href="/" 
+                className="inline-flex items-center px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
+              >
+                <MapPin className="w-4 h-4 mr-2" />
+                Browse Map View
+              </Link>
             </div>
-          </div>
+          ) : (
+            <>
+              {/* Instructions */}
+              <div className="text-center mb-6">
+                <p className="text-gray-600 mb-2">
+                  Swipe right to like, left to pass
+                </p>
+                <p className="text-sm text-gray-500">
+                  {currentEvents.length} events remaining
+                </p>
+              </div>
+
+              {/* Card Stack */}
+              <SwipeableCardStack
+                events={currentEvents}
+                onLike={handleLike}
+                onPass={handlePass}
+                onBook={handleBook}
+                onEmpty={handleEmpty}
+              />
+
+              {/* Stats */}
+              <div className="mt-8 text-center">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="bg-white rounded-lg p-4 shadow-sm">
+                    <div className="text-2xl font-bold text-red-500">{likedEvents.length}</div>
+                    <div className="text-sm text-gray-600">Liked</div>
+                  </div>
+                  <div className="bg-white rounded-lg p-4 shadow-sm">
+                    <div className="text-2xl font-bold text-gray-500">{passedEvents.length}</div>
+                    <div className="text-sm text-gray-600">Passed</div>
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
         </div>
       </div>
 
