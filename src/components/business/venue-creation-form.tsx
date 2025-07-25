@@ -14,6 +14,8 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
+import { VenueImageUpload } from "@/components/ui/image-upload";
+import { UploadResult } from "@/lib/storage";
 
 interface VenueFormData {
   name: string;
@@ -22,7 +24,7 @@ interface VenueFormData {
   lat: number;
   lng: number;
   category: string;
-  images: File[];
+  images: string[]; // Changed from File[] to string[] (URLs)
 }
 
 interface VenueCreationFormProps {
@@ -61,8 +63,6 @@ export function VenueCreationForm({
     images: []
   });
 
-  const [imagePreview, setImagePreview] = useState<string[]>([]);
-
   const handleInputChange = (field: keyof VenueFormData, value: any) => {
     setFormData(prev => ({
       ...prev,
@@ -70,29 +70,24 @@ export function VenueCreationForm({
     }));
   };
 
-  const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(event.target.files || []);
-    const newImages = [...formData.images, ...files];
-    
+  const handleImageUploadComplete = (results: UploadResult[]) => {
+    const imageUrls = results.map(result => result.url);
     setFormData(prev => ({
       ...prev,
-      images: newImages
+      images: [...prev.images, ...imageUrls]
     }));
-
-    // Create preview URLs
-    const newPreviews = files.map(file => URL.createObjectURL(file));
-    setImagePreview(prev => [...prev, ...newPreviews]);
   };
 
-  const removeImage = (index: number) => {
-    const newImages = formData.images.filter((_, i) => i !== index);
-    const newPreviews = imagePreview.filter((_, i) => i !== index);
-    
+  const handleImageUploadError = (error: string) => {
+    console.error('Image upload error:', error);
+    // You could show a toast notification here
+  };
+
+  const removeImage = (imageUrl: string) => {
     setFormData(prev => ({
       ...prev,
-      images: newImages
+      images: prev.images.filter(img => img !== imageUrl)
     }));
-    setImagePreview(newPreviews);
   };
 
   const handleAddressChange = async (address: string) => {
@@ -232,30 +227,23 @@ export function VenueCreationForm({
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div>
-            <Label htmlFor="images">Upload Images</Label>
-            <Input
-              id="images"
-              type="file"
-              multiple
-              accept="image/*"
-              onChange={handleImageUpload}
-              className="cursor-pointer"
-            />
-          </div>
+          <VenueImageUpload
+            onUploadComplete={handleImageUploadComplete}
+            onUploadError={handleImageUploadError}
+          />
 
-          {imagePreview.length > 0 && (
+          {formData.images.length > 0 && (
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              {imagePreview.map((preview, index) => (
+              {formData.images.map((imageUrl, index) => (
                 <div key={index} className="relative">
                   <img
-                    src={preview}
-                    alt={`Preview ${index + 1}`}
+                    src={imageUrl}
+                    alt={`Venue Image ${index + 1}`}
                     className="w-full h-24 object-cover rounded-lg"
                   />
                   <button
                     type="button"
-                    onClick={() => removeImage(index)}
+                    onClick={() => removeImage(imageUrl)}
                     className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600"
                   >
                     <X className="w-3 h-3" />
