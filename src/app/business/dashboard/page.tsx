@@ -7,6 +7,7 @@ import { EventCreationForm } from "@/components/business/event-creation-form";
 import { VenueCreationForm } from "@/components/business/venue-creation-form";
 import { EventManagement } from "@/components/business/event-management";
 import { VenueManagement } from "@/components/business/venue-management";
+import { VenueDetailModal } from "@/components/business/venue-detail-modal";
 import { EventPreview } from "@/components/business/event-preview";
 import { QRCodeScanner } from "@/components/qr-code/qr-code-scanner";
 import { CheckInHistory } from "@/components/business/check-in-history";
@@ -73,6 +74,8 @@ export default function BusinessDashboardPage() {
   const [showEventForm, setShowEventForm] = useState(false);
   const [showVenueForm, setShowVenueForm] = useState(false);
   const [showEventPreview, setShowEventPreview] = useState(false);
+  const [showVenueDetail, setShowVenueDetail] = useState(false);
+  const [selectedVenueId, setSelectedVenueId] = useState<string | null>(null);
   const [previewEventData, setPreviewEventData] = useState<EventPreviewData | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [business, setBusiness] = useState<Business | null>(null);
@@ -367,6 +370,47 @@ export default function BusinessDashboardPage() {
     // Handle event publishing
   };
 
+  const handleViewVenue = (venueId: string) => {
+    setSelectedVenueId(venueId);
+    setShowVenueDetail(true);
+  };
+
+  const handleEditVenue = (venueId: string) => {
+    setSelectedVenueId(venueId);
+    setShowVenueDetail(true);
+  };
+
+  const handleDeleteVenue = async (venueId: string) => {
+    if (!confirm('Are you sure you want to delete this venue? This action cannot be undone.')) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/venues/${venueId}`, {
+        method: 'DELETE',
+      });
+
+      if (response.ok) {
+        // Close modal and refresh business stats
+        setShowVenueDetail(false);
+        setSelectedVenueId(null);
+        if (business) {
+          await loadBusinessStats(business.id);
+        }
+      } else {
+        const error = await response.json();
+        alert('Error deleting venue: ' + error.message);
+      }
+    } catch (error) {
+      alert('Error deleting venue');
+    }
+  };
+
+  const handleVenueDetailClose = () => {
+    setShowVenueDetail(false);
+    setSelectedVenueId(null);
+  };
+
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
@@ -530,9 +574,9 @@ export default function BusinessDashboardPage() {
       ) : (
         <VenueManagement
           businessId={business?.id}
-          onEditVenue={(venueId) => console.log("Edit venue:", venueId)}
-          onViewVenue={(venueId) => console.log("View venue:", venueId)}
-          onDeleteVenue={(venueId) => console.log("Delete venue:", venueId)}
+          onEditVenue={handleEditVenue}
+          onViewVenue={handleViewVenue}
+          onDeleteVenue={handleDeleteVenue}
           onCreateVenue={handleCreateVenue}
         />
       )}
@@ -684,6 +728,15 @@ export default function BusinessDashboardPage() {
             onPublish={handlePreviewPublish}
           />
         )}
+
+        {/* Venue Detail Modal */}
+        <VenueDetailModal
+          venueId={selectedVenueId}
+          isOpen={showVenueDetail}
+          onClose={handleVenueDetailClose}
+          onEdit={handleEditVenue}
+          onDelete={handleDeleteVenue}
+        />
       </AppLayout>
     </BusinessGuard>
   );
