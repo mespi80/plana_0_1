@@ -6,6 +6,7 @@ import { AppLayout } from "@/components/layout/app-layout";
 import { EventCreationForm } from "@/components/business/event-creation-form";
 import { VenueCreationForm } from "@/components/business/venue-creation-form";
 import { EventManagement } from "@/components/business/event-management";
+import { VenueManagement } from "@/components/business/venue-management";
 import { EventPreview } from "@/components/business/event-preview";
 import { QRCodeScanner } from "@/components/qr-code/qr-code-scanner";
 import { CheckInHistory } from "@/components/business/check-in-history";
@@ -527,34 +528,13 @@ export default function BusinessDashboardPage() {
           isLoading={isLoading}
         />
       ) : (
-        <div className="space-y-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-2xl font-bold text-gray-900">Venue Management</h2>
-              <p className="text-gray-600">Manage your venues and locations</p>
-            </div>
-            <Button onClick={handleCreateVenue}>
-              <Plus className="w-4 h-4 mr-2" />
-              Create Venue
-            </Button>
-          </div>
-          
-          <Card>
-            <CardContent className="p-6">
-              <div className="text-center">
-                <Building2 className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-gray-900 mb-2">No Venues Yet</h3>
-                <p className="text-gray-600 mb-4">
-                  Create your first venue to start hosting events
-                </p>
-                <Button onClick={handleCreateVenue}>
-                  <Plus className="w-4 h-4 mr-2" />
-                  Create Your First Venue
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+        <VenueManagement
+          businessId={business?.id}
+          onEditVenue={(venueId) => console.log("Edit venue:", venueId)}
+          onViewVenue={(venueId) => console.log("View venue:", venueId)}
+          onDeleteVenue={(venueId) => console.log("Delete venue:", venueId)}
+          onCreateVenue={handleCreateVenue}
+        />
       )}
     </div>
   );
