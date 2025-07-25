@@ -8,6 +8,7 @@ import { VenueCreationForm } from "@/components/business/venue-creation-form";
 import { EventManagement } from "@/components/business/event-management";
 import { VenueManagement } from "@/components/business/venue-management";
 import { VenueDetailModal } from "@/components/business/venue-detail-modal";
+import { EventDetailModal } from "@/components/business/event-detail-modal";
 import { EventPreview } from "@/components/business/event-preview";
 import { QRCodeScanner } from "@/components/qr-code/qr-code-scanner";
 import { CheckInHistory } from "@/components/business/check-in-history";
@@ -75,7 +76,9 @@ export default function BusinessDashboardPage() {
   const [showVenueForm, setShowVenueForm] = useState(false);
   const [showEventPreview, setShowEventPreview] = useState(false);
   const [showVenueDetail, setShowVenueDetail] = useState(false);
+  const [showEventDetail, setShowEventDetail] = useState(false);
   const [selectedVenueId, setSelectedVenueId] = useState<string | null>(null);
+  const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
   const [previewEventData, setPreviewEventData] = useState<EventPreviewData | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [business, setBusiness] = useState<Business | null>(null);
@@ -304,7 +307,8 @@ export default function BusinessDashboardPage() {
   };
 
   const handleViewEvent = (eventId: string) => {
-    console.log("View event:", eventId);
+    setSelectedEventId(eventId);
+    setShowEventDetail(true);
   };
 
   const handleDeleteEvent = async (eventId: string) => {
@@ -409,6 +413,11 @@ export default function BusinessDashboardPage() {
   const handleVenueDetailClose = () => {
     setShowVenueDetail(false);
     setSelectedVenueId(null);
+  };
+
+  const handleEventDetailClose = () => {
+    setShowEventDetail(false);
+    setSelectedEventId(null);
   };
 
   const formatCurrency = (amount: number) => {
@@ -728,6 +737,16 @@ export default function BusinessDashboardPage() {
             onPublish={handlePreviewPublish}
           />
         )}
+
+        {/* Event Detail Modal */}
+        <EventDetailModal
+          eventId={selectedEventId}
+          isOpen={showEventDetail}
+          onClose={handleEventDetailClose}
+          onEdit={handleEditEvent}
+          onDelete={handleDeleteEvent}
+          onToggleStatus={handleToggleEventStatus}
+        />
 
         {/* Venue Detail Modal */}
         <VenueDetailModal
