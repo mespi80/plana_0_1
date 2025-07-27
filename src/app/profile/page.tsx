@@ -5,6 +5,7 @@ import { supabase } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
 import { User, Settings, LogOut, MapPin, Bell, Shield, HelpCircle, CreditCard } from "lucide-react";
 import { AppLayout } from "@/components/layout/app-layout";
+import { UserQRCode } from "@/components/user/user-qr-code";
 
 export default function ProfilePage() {
   const [user, setUser] = useState<any>(null);
@@ -116,6 +117,15 @@ export default function ProfilePage() {
               </p>
             </div>
           </div>
+        </div>
+
+        {/* User QR Code */}
+        <div className="mb-6">
+          <UserQRCode
+            userId={user?.id || ""}
+            userEmail={user?.email || ""}
+            userName={user?.user_metadata?.full_name || "User"}
+          />
         </div>
 
         {/* Menu Items */}
