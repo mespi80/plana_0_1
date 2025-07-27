@@ -4,7 +4,7 @@ import { useState } from "react";
 import { 
   Calendar, 
   BarChart3, 
-  QrCode, 
+  Heart, 
   Settings, 
   Plus, 
   Users, 
@@ -49,9 +49,9 @@ const dashboardTabs = [
   },
   {
     id: "scanner",
-    label: "QR Scanner",
-    icon: QrCode,
-    description: "Scan customer QR codes for check-ins"
+    label: "Liked",
+    icon: Heart,
+    description: "View liked events and favorites"
   },
   {
     id: "analytics",

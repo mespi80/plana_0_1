@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/contexts/auth-context";
-import { Home, Heart, QrCode, User, Sparkles, Calendar, BarChart3, Shield } from "lucide-react";
+import { Home, Heart, User, Sparkles, Calendar, BarChart3, Shield } from "lucide-react";
 
 export function BottomNavigation() {
   const pathname = usePathname();
@@ -25,8 +25,8 @@ export function BottomNavigation() {
       },
       {
         href: "/qr-code",
-        label: "QR Code",
-        icon: QrCode,
+        label: "Liked",
+        icon: Heart,
         active: pathname === "/qr-code"
       },
       {

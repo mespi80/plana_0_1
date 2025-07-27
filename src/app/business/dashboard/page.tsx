@@ -10,7 +10,6 @@ import { VenueManagement } from "@/components/business/venue-management";
 import { VenueDetailModal } from "@/components/business/venue-detail-modal";
 import { EventDetailModal } from "@/components/business/event-detail-modal";
 import { EventPreview } from "@/components/business/event-preview";
-import { QRCodeScanner } from "@/components/qr-code/qr-code-scanner";
 import { CheckInHistory } from "@/components/business/check-in-history";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -23,7 +22,7 @@ import {
   Building2,
   Plus,
   Activity,
-  QrCode
+  Heart
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 
@@ -65,7 +64,7 @@ const businessTabs = [
   { id: "overview", label: "Overview", icon: Activity },
   { id: "events", label: "Events", icon: Calendar },
   { id: "venues", label: "Venues", icon: Building2 },
-  { id: "scanner", label: "Scanner", icon: QrCode },
+  { id: "scanner", label: "Liked", icon: Heart },
   { id: "analytics", label: "Analytics", icon: BarChart3 },
   { id: "settings", label: "Settings", icon: Settings }
 ];
@@ -595,27 +594,21 @@ export default function BusinessDashboardPage() {
   const renderScannerContent = () => (
     <div className="space-y-6">
       <div className="mb-6">
-        <h2 className="text-2xl font-bold text-gray-900 mb-2">QR Code Scanner</h2>
-        <p className="text-gray-600">Scan customer QR codes to validate tickets and check them in</p>
+        <h2 className="text-2xl font-bold text-gray-900 mb-2">Liked Events</h2>
+        <p className="text-gray-600">View events that you and your customers have liked</p>
       </div>
       
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div>
-          <QRCodeScanner
-            businessId={business?.id || "business_demo_123"}
-            eventId="event_demo_456"
-            onCheckIn={(checkInData) => console.log("Check-in:", checkInData)}
-            onError={(error) => console.error("Scanner error:", error)}
-          />
-        </div>
-        
-        <div>
-          <CheckInHistory
-            eventId="event_demo_456"
-            businessId={business?.id || "business_demo_123"}
-          />
-        </div>
-      </div>
+      <Card>
+        <CardContent className="p-6">
+          <div className="text-center">
+            <Heart className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-gray-900 mb-2">Liked Events Coming Soon</h3>
+            <p className="text-gray-600">
+              Track which events are most popular and liked by your customers.
+            </p>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 
